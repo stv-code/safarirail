@@ -1,19 +1,21 @@
-import { createClient } from 'next-sanity'
+import { createClient, type SanityClient } from 'next-sanity'
 import imageUrlBuilder from '@sanity/image-url'
 import type { SanityImageSource } from '@sanity/image-url/lib/types/types'
 
 const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID
 const dataset = process.env.NEXT_PUBLIC_SANITY_DATASET || 'production'
 
-export const client = projectId
+export const client: SanityClient | null = projectId
   ? createClient({ projectId, dataset, apiVersion: '2024-01-01', useCdn: true })
   : null
 
-const builder = projectId && client ? imageUrlBuilder(client) : null
-
 export function urlFor(source: SanityImageSource) {
-  if (!builder) return { url: () => '' }
-  return builder.image(source)
+  if (!client) {
+    // Return a chainable stub that resolves to empty string
+    const stub = { width: () => stub, height: () => stub, url: () => '' }
+    return stub
+  }
+  return imageUrlBuilder(client).image(source)
 }
 
 async function safeFetch<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
