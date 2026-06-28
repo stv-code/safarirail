@@ -34,9 +34,11 @@ type Step = 'passenger' | 'payment' | 'success'
 interface BookingModalProps {
   selectedClass: ClassKey | null
   onClose: () => void
+  whatsapp?: string
+  email?: string
 }
 
-export default function BookingModal({ selectedClass, onClose }: BookingModalProps) {
+export default function BookingModal({ selectedClass, onClose, whatsapp = '254769869503', email = 'safarirailbookings@gmail.com' }: BookingModalProps) {
   const [step, setStep] = useState<Step>('passenger')
   const [paymentMethod, setPaymentMethod] = useState('')
   const [form, setForm] = useState({
@@ -270,7 +272,7 @@ export default function BookingModal({ selectedClass, onClose }: BookingModalPro
 
               <div className="payment-actions">
                 <a
-                  href={`https://wa.me/254769869503?text=${waMessage}`}
+                  href={`https://wa.me/${whatsapp}?text=${waMessage}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="btn-whatsapp"
@@ -279,7 +281,7 @@ export default function BookingModal({ selectedClass, onClose }: BookingModalPro
                   ✓ Confirm via WhatsApp
                 </a>
                 <a
-                  href={`mailto:safarirailbookings@gmail.com?subject=${emailSubject}&body=${emailBody}`}
+                  href={`mailto:${email}?subject=${emailSubject}&body=${emailBody}`}
                   className="btn-email-confirm"
                   style={{ opacity: !paymentMethod ? 0.5 : 1, pointerEvents: !paymentMethod ? 'none' : 'auto' }}
                 >
