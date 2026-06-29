@@ -17,6 +17,20 @@ interface Settings {
   whatsappNumber?: string
   email?: string
 }
+interface Content {
+  heroEyebrow?: string
+  heroHeadline?: string
+  heroSubtext?: string
+  heroCaveat?: string
+  infoStrip?: string[]
+  pricingTitle?: string
+  pricingSubtext?: string
+  economyFeatures?: string[]
+  firstClassFeatures?: string[]
+  premiumFeatures?: string[]
+  footerDisclaimer?: string
+  fraudAlert?: string
+}
 
 const STATIC_FAQS = [
   { _id: '1', question: 'Are you the official SGR website?', answer: 'No. We are a private third-party agency helping tourists book tickets. We are NOT selling tickets — we assist you in booking them. The official website is metickets.krc.co.ke.' },
@@ -26,27 +40,74 @@ const STATIC_FAQS = [
   { _id: '5', question: 'Do children travel for free?', answer: 'Children under 3 years travel free. Children aged 3–11 pay a reduced child fare.' },
 ]
 
+// Helper: render headline with *italic* syntax
+function Headline({ text }: { text: string }) {
+  const parts = text.split(/\*([^*]+)\*/)
+  return (
+    <h1>
+      {parts.map((part, i) =>
+        i % 2 === 1 ? <em key={i}>{part}</em> : part
+      )}
+    </h1>
+  )
+}
+
 export default function HomeClient({
-  faqs,
-  settings,
-  reviews,
+  faqs, settings, reviews, content,
 }: {
   faqs: Faq[]
   settings: Settings | null
   reviews: Review[]
+  content: Content | null
 }) {
   const [selectedClass, setSelectedClass] = useState<ClassKey | null>(null)
   const [openFaq, setOpenFaq] = useState<number | null>(null)
 
+  const c = content || {}
   const displayFaqs = faqs.length > 0 ? faqs : STATIC_FAQS
   const whatsapp = settings?.whatsappNumber || '254769869503'
   const email = settings?.email || 'safarirailbookings@gmail.com'
 
-  const classImages: Record<ClassKey, any> = {
-    economy: settings?.economyImage,
-    first: settings?.firstClassImage,
-    premium: settings?.premiumImage,
-  }
+  const heroEyebrow = c.heroEyebrow || 'Madaraka Express · Nairobi ↔ Mombasa'
+  const heroHeadline = c.heroHeadline || 'Experience Kenya *by Rail*'
+  const heroSubtext = c.heroSubtext || "The hassle-free way for tourists to book SGR tickets. No M-Pesa? No Kenyan bank account? No problem."
+  const heroCaveat = c.heroCaveat || "Not comfortable with third parties? We encourage you to book directly at the station."
+  const infoStrip = c.infoStrip || [
+    '⚠️ Third-party booking agency — not affiliated with Kenya Railways Corporation',
+    '🎫 Tickets delivered via Email, WhatsApp or Telegram',
+    '🌍 PayPal · Wise · Crypto accepted',
+  ]
+  const pricingTitle = c.pricingTitle || 'Choose Your Journey'
+  const pricingSubtext = c.pricingSubtext || 'All prices include our booking assistance fee. Select the class that suits your travel style.'
+  const fraudAlert = c.fraudAlert || 'If you suspect fraudulent activity in our name, contact DCI Kenya, call 911, or visit the nearest police station immediately.'
+  const footerDisclaimer = c.footerDisclaimer || 'SafariRail is an independent third-party booking agency. Not affiliated with, endorsed by, or representing Kenya Railways Corporation (KRC).'
+
+  const classConfig = [
+    {
+      key: 'economy' as ClassKey,
+      label: 'Economy',
+      adultPrice: '2,000', childPrice: '1,250', service: 500, ticketAdult: 1500, ticketChild: 750,
+      featured: true, badge: 'Most Popular',
+      image: settings?.economyImage,
+      features: c.economyFeatures || ['Standard comfortable seating', 'Air conditioning throughout', 'Luggage storage space', 'Traveller booking support'],
+    },
+    {
+      key: 'first' as ClassKey,
+      label: 'First Class',
+      adultPrice: '5,500', childPrice: '3,250', service: 1000, ticketAdult: 4500, ticketChild: 2250,
+      featured: false, badge: null,
+      image: settings?.firstClassImage,
+      features: c.firstClassFeatures || ['Reclining spacious seats', 'Premium lounge access', 'Tray tables & power outlets', 'Priority boarding'],
+    },
+    {
+      key: 'premium' as ClassKey,
+      label: 'Premium',
+      adultPrice: '13,500', childPrice: '7,500', service: 1500, ticketAdult: 12000, ticketChild: 6000,
+      featured: false, badge: null,
+      image: settings?.premiumImage,
+      features: c.premiumFeatures || ['Private luxury compartment', 'Complimentary meals & drinks', 'Personal concierge service', 'Best views through Tsavo'],
+    },
+  ]
 
   return (
     <>
@@ -65,27 +126,16 @@ export default function HomeClient({
         )}
         <div className="container" style={{ position: 'relative', zIndex: 1 }}>
           <div className="hero-eyebrow">
-            <span>🚂</span> Madaraka Express · Nairobi ↔ Mombasa
+            <span>🚂</span> {heroEyebrow}
           </div>
-          <h1>Experience Kenya <em>by Rail</em></h1>
-          <p className="hero-sub">
-            The hassle-free way for tourists to book SGR tickets. No M-Pesa? No Kenyan bank account? No problem.
-          </p>
-          <p className="hero-caveat">
-            Not comfortable with third parties? We encourage you to book directly at the station.
-          </p>
+          <Headline text={heroHeadline} />
+          <p className="hero-sub">{heroSubtext}</p>
+          <p className="hero-caveat">{heroCaveat}</p>
           <div className="hero-actions">
-            <button className="btn-primary" onClick={() => {
-              document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })
-            }}>
+            <button className="btn-primary" onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}>
               Start Booking →
             </button>
-            <a
-              href="https://metickets.krc.co.ke/index.php"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-ghost"
-            >
+            <a href="https://metickets.krc.co.ke/index.php" target="_blank" rel="noopener noreferrer" className="btn-ghost">
               Official KRC Site ↗
             </a>
           </div>
@@ -93,13 +143,13 @@ export default function HomeClient({
         <div className="hero-track" aria-hidden="true" />
       </section>
 
-      {/* Notice strip */}
+      {/* Info strip */}
       <div className="info-strip">
         <div className="container">
           <div className="info-strip-inner">
-            <span className="info-strip-item">⚠️ Third-party booking agency — not affiliated with Kenya Railways Corporation</span>
-            <span className="info-strip-item">🎫 Tickets delivered via Email, WhatsApp or Telegram</span>
-            <span className="info-strip-item">🌍 PayPal · Wise · Crypto accepted</span>
+            {infoStrip.map((item: string, i: number) => (
+              <span key={i} className="info-strip-item">{item}</span>
+            ))}
           </div>
         </div>
       </div>
@@ -108,65 +158,23 @@ export default function HomeClient({
       <section className="section" id="pricing">
         <div className="container">
           <div className="section-eyebrow">Ticket Classes</div>
-          <h2 className="section-title">Choose Your Journey</h2>
-          <p className="section-sub">
-            All prices include our booking assistance fee. Select the class that suits your travel style.
-          </p>
+          <h2 className="section-title">{pricingTitle}</h2>
+          <p className="section-sub">{pricingSubtext}</p>
 
           <div className="pricing-grid">
-            {([
-              {
-                key: 'economy' as ClassKey,
-                label: 'Economy',
-                adultPrice: '2,000',
-                childPrice: '1,250',
-                service: 500,
-                ticketAdult: 1500,
-                ticketChild: 750,
-                featured: true,
-                badge: 'Most Popular',
-                features: ['Standard comfortable seating', 'Air conditioning throughout', 'Luggage storage space', 'Traveller booking support'],
-              },
-              {
-                key: 'first' as ClassKey,
-                label: 'First Class',
-                adultPrice: '5,500',
-                childPrice: '3,250',
-                service: 1000,
-                ticketAdult: 4500,
-                ticketChild: 2250,
-                featured: false,
-                badge: null,
-                features: ['Reclining spacious seats', 'Premium lounge access', 'Tray tables & power outlets', 'Priority boarding'],
-              },
-              {
-                key: 'premium' as ClassKey,
-                label: 'Premium',
-                adultPrice: '13,500',
-                childPrice: '7,500',
-                service: 1500,
-                ticketAdult: 12000,
-                ticketChild: 6000,
-                featured: false,
-                badge: null,
-                features: ['Private luxury compartment', 'Complimentary meals & drinks', 'Personal concierge service', 'Best views through Tsavo'],
-              },
-            ]).map(cls => (
+            {classConfig.map(cls => (
               <div key={cls.key} className={`pricing-card${cls.featured ? ' featured' : ''}`}>
                 {cls.badge && <div className="pricing-badge">{cls.badge}</div>}
-
-                {/* Class image from Sanity */}
-                {classImages[cls.key] && (
+                {cls.image && (
                   <div style={{ borderRadius: 'var(--radius)', overflow: 'hidden', marginBottom: 16, height: 140, position: 'relative' }}>
                     <Image
-                      src={urlFor(classImages[cls.key]).width(600).height(280).url()}
+                      src={urlFor(cls.image).width(600).height(280).url()}
                       alt={`${cls.label} class interior`}
                       fill
                       style={{ objectFit: 'cover' }}
                     />
                   </div>
                 )}
-
                 <div className="pricing-tier">{cls.label}</div>
                 <div className="pricing-price"><sup>KES</sup> {cls.adultPrice}</div>
                 <div className="pricing-unit">per adult</div>
@@ -177,7 +185,7 @@ export default function HomeClient({
                   Child (&lt;3): Free
                 </div>
                 <ul className="pricing-features">
-                  {cls.features.map(f => <li key={f}>{f}</li>)}
+                  {cls.features.map((f: string) => <li key={f}>{f}</li>)}
                 </ul>
                 <button className="btn-book" onClick={() => setSelectedClass(cls.key)}>
                   Select {cls.label}
@@ -217,7 +225,6 @@ export default function HomeClient({
           <div className="section-eyebrow">Common Questions</div>
           <h2 className="section-title">Frequently Asked</h2>
           <p className="section-sub">Everything you need to know before booking with us.</p>
-
           <div className="faq-list" style={{ maxWidth: 720 }}>
             {displayFaqs.map((faq, i) => (
               <div key={faq._id} className={`faq-item${openFaq === i ? ' open' : ''}`}>
@@ -229,7 +236,6 @@ export default function HomeClient({
               </div>
             ))}
           </div>
-
           <p style={{ marginTop: 24, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
             More questions?{' '}
             <a href="https://metickets.krc.co.ke/faqs.php" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--savanna-dark)', textDecoration: 'underline' }}>
@@ -245,7 +251,6 @@ export default function HomeClient({
           <div className="section-eyebrow">Get in Touch</div>
           <h2 className="section-title">Need Help?</h2>
           <p className="section-sub">Custom itineraries, group bookings, or general questions.</p>
-
           <div className="contact-grid">
             <div className="contact-info">
               <div className="contact-card">
@@ -259,16 +264,13 @@ export default function HomeClient({
                 <span className="contact-icon">📱</span>
                 <div>
                   <div className="contact-label">WhatsApp</div>
-                  <a href={`https://wa.me/${whatsapp}`} target="_blank" rel="noopener noreferrer" className="contact-value">
-                    +{whatsapp}
-                  </a>
+                  <a href={`https://wa.me/${whatsapp}`} target="_blank" rel="noopener noreferrer" className="contact-value">+{whatsapp}</a>
                 </div>
               </div>
               <div className="fraud-alert">
-                <strong>⚠️ Fraud Alert:</strong> If you suspect fraudulent activity in our name, contact DCI Kenya, call 911, or visit the nearest police station immediately.
+                <strong>⚠️ Fraud Alert:</strong> {fraudAlert}
               </div>
             </div>
-
             <form className="contact-form" onSubmit={e => { e.preventDefault(); alert('Message sent! We will reply shortly.') }}>
               <div className="form-group">
                 <label className="form-label">Your Name</label>
@@ -301,7 +303,7 @@ export default function HomeClient({
             </nav>
           </div>
           <p className="footer-disclaimer">
-            SafariRail is an independent third-party booking agency. Not affiliated with, endorsed by, or representing Kenya Railways Corporation (KRC). The official KRC ticketing site is{' '}
+            {footerDisclaimer}{' '}
             <a href="https://metickets.krc.co.ke" target="_blank" rel="noopener noreferrer" style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'underline' }}>
               metickets.krc.co.ke
             </a>.
@@ -309,12 +311,7 @@ export default function HomeClient({
         </div>
       </footer>
 
-      <BookingModal
-        selectedClass={selectedClass}
-        onClose={() => setSelectedClass(null)}
-        whatsapp={whatsapp}
-        email={email}
-      />
+      <BookingModal selectedClass={selectedClass} onClose={() => setSelectedClass(null)} whatsapp={whatsapp} email={email} />
     </>
   )
 }

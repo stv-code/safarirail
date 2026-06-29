@@ -11,7 +11,6 @@ export const client: SanityClient | null = projectId
 
 export function urlFor(source: SanityImageSource) {
   if (!client) {
-    // Return a chainable stub that resolves to empty string
     const stub = { width: () => stub, height: () => stub, url: () => '' }
     return stub
   }
@@ -38,5 +37,16 @@ export async function getFaqs() {
 export async function getSiteSettings() {
   return safeFetch(() => client!.fetch(
     `*[_type == "siteSettings"][0] { heroImage, economyImage, firstClassImage, premiumImage, aboutImage, whatsappNumber, email }`
+  ), null)
+}
+
+export async function getPageContent() {
+  return safeFetch(() => client!.fetch(
+    `*[_type == "pageContent"][0] {
+      heroEyebrow, heroHeadline, heroSubtext, heroCaveat,
+      infoStrip, pricingTitle, pricingSubtext,
+      economyFeatures, firstClassFeatures, premiumFeatures,
+      footerDisclaimer, fraudAlert
+    }`
   ), null)
 }
