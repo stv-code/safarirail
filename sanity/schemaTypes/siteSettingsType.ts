@@ -11,6 +11,7 @@ export const siteSettingsType = defineType({
       type: 'image',
       description: 'Appears behind the hero text on the homepage. Best: wide landscape of the Madaraka Express or Tsavo.',
       options: { hotspot: true },
+      validation: Rule => Rule.required(),
     }),
     defineField({
       name: 'economyImage',
@@ -18,6 +19,7 @@ export const siteSettingsType = defineType({
       type: 'image',
       description: 'Interior shot of economy class seats.',
       options: { hotspot: true },
+      validation: Rule => Rule.required(),
     }),
     defineField({
       name: 'firstClassImage',
@@ -25,6 +27,7 @@ export const siteSettingsType = defineType({
       type: 'image',
       description: 'Interior shot of first class seats.',
       options: { hotspot: true },
+      validation: Rule => Rule.required(),
     }),
     defineField({
       name: 'premiumImage',
@@ -32,6 +35,7 @@ export const siteSettingsType = defineType({
       type: 'image',
       description: 'Interior shot of the premium cabin.',
       options: { hotspot: true },
+      validation: Rule => Rule.required(),
     }),
     defineField({
       name: 'aboutImage',
@@ -46,12 +50,18 @@ export const siteSettingsType = defineType({
       type: 'string',
       description: 'With country code, no spaces. e.g. 254769869503',
       initialValue: '254769869503',
+      validation: Rule =>
+        Rule.required().regex(/^\d{10,15}$/, {
+          name: 'phone number with country code',
+          invert: false,
+        }),
     }),
     defineField({
       name: 'email',
       title: 'Booking Email',
       type: 'string',
       initialValue: 'safarirailbookings@gmail.com',
+      validation: Rule => Rule.required().email(),
     }),
   ],
   preview: {

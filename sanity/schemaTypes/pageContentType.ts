@@ -5,122 +5,119 @@ export const pageContentType = defineType({
   title: 'Page Content',
   type: 'document',
   fields: [
-    // Hero
     defineField({
       name: 'heroEyebrow',
-      title: 'Hero — Eyebrow Text',
+      title: 'Hero - Eyebrow Text',
       type: 'string',
-      description: 'Small text above the headline e.g. "Madaraka Express · Nairobi ↔ Mombasa"',
-      initialValue: 'Madaraka Express · Nairobi ↔ Mombasa',
+      description: 'Small text above the headline, e.g. "Madaraka Express - Nairobi to Mombasa"',
+      initialValue: 'Madaraka Express - Nairobi to Mombasa',
+      validation: Rule => Rule.required().min(4).max(80),
     }),
     defineField({
       name: 'heroHeadline',
-      title: 'Hero — Headline',
+      title: 'Hero - Headline',
       type: 'string',
-      description: 'Main headline. Use * around a word to italicise it e.g. "Experience Kenya *by Rail*"',
+      description: 'Main headline. Use * around a word to italicise it, e.g. "Experience Kenya *by Rail*"',
       initialValue: 'Experience Kenya *by Rail*',
+      validation: Rule => Rule.required().min(8).max(90),
     }),
     defineField({
       name: 'heroSubtext',
-      title: 'Hero — Subtext',
+      title: 'Hero - Subtext',
       type: 'text',
       rows: 2,
-      initialValue: "The hassle-free way for tourists to book SGR tickets. No M-Pesa? No Kenyan bank account? No problem.",
+      initialValue: 'The hassle-free way for tourists to book SGR tickets. No M-Pesa? No Kenyan bank account? No problem.',
+      validation: Rule => Rule.required().min(20).max(220),
     }),
     defineField({
       name: 'heroCaveat',
-      title: 'Hero — Caveat (small print)',
+      title: 'Hero - Caveat',
       type: 'string',
-      initialValue: "Not comfortable with third parties? We encourage you to book directly at the station.",
+      initialValue: 'Not comfortable with third parties? We encourage you to book directly at the station.',
+      validation: Rule => Rule.required().min(20).max(180),
     }),
-
-    // Info strip
     defineField({
       name: 'infoStrip',
       title: 'Info Strip Items',
       type: 'array',
-      description: 'The three notice items below the hero',
-      of: [{ type: 'string' }],
+      description: 'The three notice items below the hero.',
+      of: [{ type: 'string', validation: Rule => Rule.required().min(4).max(120) }],
       initialValue: [
-        '⚠️ Third-party booking agency — not affiliated with Kenya Railways Corporation',
-        '🎫 Tickets delivered via Email, WhatsApp or Telegram',
-        '🌍 PayPal · Wise · Crypto accepted',
+        'Third-party booking agency - not affiliated with Kenya Railways Corporation',
+        'Tickets delivered via Email, WhatsApp or Telegram',
+        'PayPal, Wise, and Crypto accepted',
       ],
+      validation: Rule => Rule.required().min(3).max(3),
     }),
-
-    // Pricing section
     defineField({
       name: 'pricingTitle',
-      title: 'Pricing — Section Title',
+      title: 'Pricing - Section Title',
       type: 'string',
       initialValue: 'Choose Your Journey',
+      validation: Rule => Rule.required().min(4).max(80),
     }),
     defineField({
       name: 'pricingSubtext',
-      title: 'Pricing — Subtext',
+      title: 'Pricing - Subtext',
       type: 'text',
       rows: 2,
       initialValue: 'All prices include our booking assistance fee. Select the class that suits your travel style.',
+      validation: Rule => Rule.required().min(20).max(220),
     }),
-
-    // Economy class
     defineField({
       name: 'economyFeatures',
-      title: 'Economy — Feature List',
+      title: 'Economy - Feature List',
       type: 'array',
-      of: [{ type: 'string' }],
+      of: [{ type: 'string', validation: Rule => Rule.required().min(4).max(80) }],
       initialValue: [
         'Standard comfortable seating',
         'Air conditioning throughout',
         'Luggage storage space',
         'Traveller booking support',
       ],
+      validation: Rule => Rule.required().min(3).max(6),
     }),
-
-    // First class
     defineField({
       name: 'firstClassFeatures',
-      title: 'First Class — Feature List',
+      title: 'First Class - Feature List',
       type: 'array',
-      of: [{ type: 'string' }],
+      of: [{ type: 'string', validation: Rule => Rule.required().min(4).max(80) }],
       initialValue: [
         'Reclining spacious seats',
         'Premium lounge access',
-        'Tray tables & power outlets',
+        'Tray tables and power outlets',
         'Priority boarding',
       ],
+      validation: Rule => Rule.required().min(3).max(6),
     }),
-
-    // Premium
     defineField({
       name: 'premiumFeatures',
-      title: 'Premium — Feature List',
+      title: 'Premium - Feature List',
       type: 'array',
-      of: [{ type: 'string' }],
+      of: [{ type: 'string', validation: Rule => Rule.required().min(4).max(80) }],
       initialValue: [
         'Private luxury compartment',
-        'Complimentary meals & drinks',
+        'Complimentary meals and drinks',
         'Personal concierge service',
         'Best views through Tsavo',
       ],
+      validation: Rule => Rule.required().min(3).max(6),
     }),
-
-    // Footer
     defineField({
       name: 'footerDisclaimer',
       title: 'Footer Disclaimer',
       type: 'text',
       rows: 3,
       initialValue: 'SafariRail is an independent third-party booking agency. Not affiliated with, endorsed by, or representing Kenya Railways Corporation (KRC).',
+      validation: Rule => Rule.required().min(30).max(400),
     }),
-
-    // Fraud alert
     defineField({
       name: 'fraudAlert',
       title: 'Fraud Alert Text',
       type: 'text',
       rows: 2,
       initialValue: 'If you suspect fraudulent activity in our name, contact DCI Kenya, call 911, or visit the nearest police station immediately.',
+      validation: Rule => Rule.required().min(30).max(240),
     }),
   ],
   preview: {
