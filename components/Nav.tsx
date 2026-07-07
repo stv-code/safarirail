@@ -4,6 +4,7 @@ import Link from 'next/link'
 
 export default function Nav() {
   const [open, setOpen] = useState(false)
+  const navLinksId = 'primary-navigation'
 
   return (
     <nav className="nav">
@@ -12,7 +13,7 @@ export default function Nav() {
           Safari<span>Rail</span>
         </Link>
 
-        <ul className={`nav-links${open ? ' open' : ''}`}>
+        <ul id={navLinksId} className={`nav-links${open ? ' open' : ''}`}>
           <li><a href="/#pricing" onClick={() => setOpen(false)}>Classes</a></li>
           <li><Link href="/reviews" onClick={() => setOpen(false)}>Reviews</Link></li>
           <li><a href="/#faq" onClick={() => setOpen(false)}>FAQ</a></li>
@@ -27,7 +28,9 @@ export default function Nav() {
         <button
           className="nav-hamburger"
           onClick={() => setOpen(o => !o)}
-          aria-label="Toggle menu"
+          aria-label={open ? 'Close menu' : 'Open menu'}
+          aria-expanded={open}
+          aria-controls={navLinksId}
         >
           <span /><span /><span />
         </button>

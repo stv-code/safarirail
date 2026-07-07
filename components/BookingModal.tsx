@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 const COUNTRIES = [
   'United Kingdom', 'United States', 'Germany', 'France', 'Netherlands',
@@ -41,6 +41,8 @@ interface BookingModalProps {
 export default function BookingModal({ selectedClass, onClose, whatsapp = '254769869503', email = 'safarirailbookings@gmail.com' }: BookingModalProps) {
   const [step, setStep] = useState<Step>('passenger')
   const [paymentMethod, setPaymentMethod] = useState('')
+  const modalRef = useRef<HTMLDivElement>(null)
+  const previousFocusRef = useRef<HTMLElement | null>(null)
   const [form, setForm] = useState({
     name: '', passport: '', gender: '', country: '',
     date: '', time: 'morning', email: '',
@@ -64,6 +66,63 @@ export default function BookingModal({ selectedClass, onClose, whatsapp = '25476
     return () => { document.body.style.overflow = '' }
   }, [selectedClass])
 
+  useEffect(() => {
+    if (!selectedClass) return
+
+    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+
+    const focusableSelector = [
+      'a[href]',
+      'button:not([disabled])',
+      'input:not([disabled])',
+      'select:not([disabled])',
+      'textarea:not([disabled])',
+      '[tabindex]:not([tabindex="-1"])',
+    ].join(',')
+
+    const focusFirstElement = () => {
+      const firstFocusable = modalRef.current?.querySelector<HTMLElement>(focusableSelector)
+      firstFocusable?.focus()
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose()
+        return
+      }
+
+      if (event.key !== 'Tab' || !modalRef.current) return
+
+      const focusableElements = Array.from(
+        modalRef.current.querySelectorAll<HTMLElement>(focusableSelector)
+      )
+
+      if (focusableElements.length === 0) {
+        event.preventDefault()
+        return
+      }
+
+      const firstElement = focusableElements[0]
+      const lastElement = focusableElements[focusableElements.length - 1]
+
+      if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault()
+        lastElement.focus()
+      } else if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault()
+        firstElement.focus()
+      }
+    }
+
+    focusFirstElement()
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      previousFocusRef.current?.focus()
+    }
+  }, [selectedClass, onClose])
+
   if (!selectedClass || !cls) return null
 
   const waMessage = encodeURIComponent(
@@ -77,13 +136,13 @@ export default function BookingModal({ selectedClass, onClose, whatsapp = '25476
 
   return (
     <div className={`modal-overlay${selectedClass ? ' open' : ''}`} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="modal" role="dialog" aria-modal="true">
+      <div className="modal" role="dialog" aria-modal="true" aria-labelledby={`booking-${step}-title`} ref={modalRef}>
 
         {step === 'passenger' && (
           <>
             <div className="modal-header">
               <div>
-                <div className="modal-title">Passenger Details</div>
+                <div className="modal-title" id="booking-passenger-title">Passenger Details</div>
                 <div className="modal-subtitle">Booking for: {cls.label}</div>
               </div>
               <button className="modal-close" onClick={onClose} aria-label="Close">✕</button>
@@ -226,7 +285,7 @@ export default function BookingModal({ selectedClass, onClose, whatsapp = '25476
           <>
             <div className="modal-header">
               <div>
-                <div className="modal-title">Secure Payment</div>
+                <div className="modal-title" id="booking-payment-title">Secure Payment</div>
                 <div className="modal-subtitle">Choose your payment method</div>
               </div>
               <button className="modal-close" onClick={onClose} aria-label="Close">✕</button>
@@ -252,17 +311,19 @@ export default function BookingModal({ selectedClass, onClose, whatsapp = '25476
                   { id: 'western-union', icon: '🏦', label: 'Western Union', detail: 'Contact us for recipient details' },
                   { id: 'crypto', icon: '₿', label: 'Crypto (USDT/BTC/BNB)', detail: 'WhatsApp for wallet address' },
                 ].map(m => (
-                  <div
+                  <button
+                    type="button"
                     key={m.id}
                     className={`payment-method${paymentMethod === m.id ? ' selected' : ''}`}
                     onClick={() => setPaymentMethod(m.id)}
+                    aria-pressed={paymentMethod === m.id}
                   >
                     <span className="payment-method-icon">{m.icon}</span>
                     <div>
                       <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.875rem' }}>{m.label}</div>
                       <div style={{ fontSize: '0.76rem', marginTop: 2 }}>{m.detail}</div>
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
 
@@ -298,7 +359,7 @@ export default function BookingModal({ selectedClass, onClose, whatsapp = '25476
                 disabled={!paymentMethod}
                 style={{ opacity: !paymentMethod ? 0.5 : 1 }}
               >
-                Mark as Paid ✓
+                I've Sent Payment Confirmation
               </button>
             </div>
           </>
@@ -307,9 +368,9 @@ export default function BookingModal({ selectedClass, onClose, whatsapp = '25476
         {step === 'success' && (
           <div className="success-modal">
             <div className="success-icon">✅</div>
-            <div className="success-title">Booking Confirmed!</div>
+            <div className="success-title" id="booking-success-title">Payment Notification Sent</div>
             <p className="success-sub">
-              Thank you, {form.name.split(' ')[0]}. We have received your payment notification. Your M-Pesa ticket message will be sent to your email/WhatsApp shortly.
+              Thank you, {form.name.split(' ')[0]}. We have received your payment notification. Your M-Pesa ticket message will be sent to your email/WhatsApp after payment is confirmed.
             </p>
 
             <div className="ticket-preview">
