@@ -1,0 +1,127 @@
+create extension if not exists pgcrypto;
+
+create table if not exists public.bookings (
+  id uuid primary key default gen_random_uuid(),
+  reference text not null unique,
+  travel_class text not null check (travel_class in ('Economy', 'First Class', 'Premium')),
+  travel_date date not null,
+  departure text not null check (departure in ('Morning (08:00)', 'Afternoon (15:00)', 'Night (22:00)')),
+  adults integer not null check (adults between 1 and 6),
+  children integer not null check (children between 0 and 4),
+  total_amount integer not null check (total_amount >= 0),
+  payment_status text not null default 'pending' check (payment_status in ('pending', 'paid', 'failed', 'refunded', 'cancelled')),
+  status text not null default 'new' check (status in ('new', 'contacted', 'confirmed', 'completed', 'cancelled')),
+  consent_to_store_personal_data boolean not null default true,
+  source text not null default 'website',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.passengers (
+  id uuid primary key default gen_random_uuid(),
+  booking_id uuid not null references public.bookings(id) on delete cascade,
+  full_name text not null,
+  passport_id text not null,
+  gender text not null check (gender in ('Male', 'Female')),
+  country_code char(2) not null,
+  email text not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists bookings_reference_idx on public.bookings(reference);
+create index if not exists bookings_payment_status_idx on public.bookings(payment_status);
+create index if not exists bookings_created_at_idx on public.bookings(created_at desc);
+create index if not exists passengers_booking_id_idx on public.passengers(booking_id);
+
+create or replace function public.set_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists bookings_set_updated_at on public.bookings;
+create trigger bookings_set_updated_at
+before update on public.bookings
+for each row
+execute function public.set_updated_at();
+
+create or replace function public.create_booking(
+  p_reference text,
+  p_travel_class text,
+  p_travel_date date,
+  p_departure text,
+  p_adults integer,
+  p_children integer,
+  p_total_amount integer,
+  p_full_name text,
+  p_passport_id text,
+  p_gender text,
+  p_country_code text,
+  p_email text
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_booking_id uuid;
+begin
+  insert into public.bookings (
+    reference,
+    travel_class,
+    travel_date,
+    departure,
+    adults,
+    children,
+    total_amount,
+    payment_status,
+    status,
+    consent_to_store_personal_data,
+    source
+  )
+  values (
+    p_reference,
+    p_travel_class,
+    p_travel_date,
+    p_departure,
+    p_adults,
+    p_children,
+    p_total_amount,
+    'pending',
+    'new',
+    true,
+    'website'
+  )
+  returning id into v_booking_id;
+
+  insert into public.passengers (
+    booking_id,
+    full_name,
+    passport_id,
+    gender,
+    country_code,
+    email
+  )
+  values (
+    v_booking_id,
+    p_full_name,
+    p_passport_id,
+    p_gender,
+    upper(p_country_code)::char(2),
+    lower(p_email)
+  );
+
+  return v_booking_id;
+end;
+$$;
+
+alter table public.bookings enable row level security;
+alter table public.passengers enable row level security;
+
+revoke all on function public.create_booking(text, text, date, text, integer, integer, integer, text, text, text, text, text) from public;
+grant execute on function public.create_booking(text, text, date, text, integer, integer, integer, text, text, text, text, text) to service_role;
