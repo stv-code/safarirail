@@ -333,6 +333,37 @@ h1 {
   background: var(--mist);
 }
 
+.privacy-consent {
+  grid-column: span 3;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: start;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.privacy-consent input {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: var(--coral);
+}
+
+.form-status {
+  grid-column: span 4;
+  min-height: 1.4em;
+  margin: 0;
+  color: var(--forest);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.form-status[data-status='error'] {
+  color: #a73322;
+}
+
 .booking-total span,
 .booking-total small {
   display: block;
@@ -875,6 +906,11 @@ h1 {
     grid-column: span 2;
   }
 
+  .privacy-consent,
+  .form-status {
+    grid-column: span 2;
+  }
+
   .hero {
     min-height: auto;
   }
@@ -929,6 +965,8 @@ h1 {
   }
 
   .booking-summary,
+  .privacy-consent,
+  .form-status,
   .contact-form .field:nth-child(3) {
     grid-column: span 1;
   }

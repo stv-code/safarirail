@@ -68,8 +68,15 @@ import countries from '@/data/countries.json'
   </div>
   <div class="field">
     <label for="email">Email Address</label>
-    <input id="email" name="email" type="email" placeholder="tickets@example.com" required />
+    <input id="email" name="email" type="email" autocomplete="email" placeholder="tickets@example.com" required />
   </div>
+  <div class="privacy-consent">
+    <input id="privacy-consent" name="consent" type="checkbox" required />
+    <label for="privacy-consent">
+      I consent to SafariRail securely storing my booking and passenger details to process this request.
+    </label>
+  </div>
+  <p class="form-status" id="booking-status" role="status" aria-live="polite"></p>
   <div class="booking-total">
     <span>Estimated Total</span>
     <strong id="booking-total">KES 2,000</strong>
@@ -85,6 +92,8 @@ import countries from '@/data/countries.json'
   const adultsInput = document.querySelector('#adults')
   const childrenInput = document.querySelector('#children')
   const totalOutput = document.querySelector('#booking-total')
+  const statusOutput = document.querySelector('#booking-status')
+  const submitButton = form?.querySelector('button[type="submit"]')
 
   function getSelectedClass() {
     if (!(classInput instanceof HTMLSelectElement)) return null
@@ -108,6 +117,18 @@ import countries from '@/data/countries.json'
     totalOutput.textContent = `KES ${calculateTotal().toLocaleString()}`
   }
 
+  function setStatus(message: string, isError = false) {
+    if (!(statusOutput instanceof HTMLElement)) return
+    statusOutput.textContent = message
+    statusOutput.dataset.status = isError ? 'error' : 'success'
+  }
+
+  function getCountryLabel(countryCode: string) {
+    const countryInput = document.querySelector('#country')
+    if (!(countryInput instanceof HTMLSelectElement)) return countryCode
+    return countryInput.selectedOptions[0]?.textContent || countryCode
+  }
+
   if (dateInput instanceof HTMLInputElement) {
     dateInput.min = new Date().toISOString().split('T')[0]
   }
@@ -117,31 +138,58 @@ import countries from '@/data/countries.json'
   childrenInput?.addEventListener('change', updateTotal)
   updateTotal()
 
-  form?.addEventListener('submit', (event) => {
+  form?.addEventListener('submit', async (event) => {
     event.preventDefault()
 
     if (!(form instanceof HTMLFormElement)) return
+    if (!form.reportValidity()) return
 
     const data = new FormData(form)
-    const message = [
-      'Hi SafariRail,',
-      '',
-      'I would like help booking an SGR ticket.',
-      '',
-      `Name: ${data.get('name')}`,
-      `Passport/ID: ${data.get('passport')}`,
-      `Gender: ${data.get('gender')}`,
-      `Country: ${data.get('country')}`,
-      `Class: ${data.get('class')}`,
-      `Date: ${data.get('date')}`,
-      `Time: ${data.get('departure')}`,
-      `Passengers: ${data.get('adults')} adult(s), ${data.get('children')} child(ren)`,
-      `Estimated Total: KES ${calculateTotal().toLocaleString()}`,
-      `Email: ${data.get('email')}`,
-      '',
-      'Please confirm availability and payment details. Thank you!',
-    ].join('\n')
+    const payload = {
+      travelClass: data.get('class'),
+      travelDate: data.get('date'),
+      departure: data.get('departure'),
+      adults: Number(data.get('adults') || 1),
+      children: Number(data.get('children') || 0),
+      fullName: data.get('name'),
+      passportId: data.get('passport'),
+      gender: data.get('gender'),
+      countryCode: data.get('country'),
+      countryName: getCountryLabel(String(data.get('country') || '')),
+      email: data.get('email'),
+      consent: data.get('consent') === 'on',
+    }
 
-    window.open(`https://wa.me/254769869503?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer')
+    if (submitButton instanceof HTMLButtonElement) {
+      submitButton.disabled = true
+      submitButton.textContent = 'Submitting...'
+    }
+    setStatus('Submitting your secure booking request...')
+
+    try {
+      const response = await fetch('/api/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      const result = await response.json()
+
+      if (!response.ok) {
+        const details = Array.isArray(result.errors) ? ` ${result.errors.join(' ')}` : ''
+        throw new Error(`${result.message || 'Submission failed.'}${details}`)
+      }
+
+      setStatus(`Booking request ${result.bookingReference} recorded securely. Opening WhatsApp with your reference only.`)
+      if (typeof result.whatsappUrl === 'string') {
+        window.open(result.whatsappUrl, '_blank', 'noopener,noreferrer')
+      }
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'We could not submit your booking right now. Please try again.', true)
+    } finally {
+      if (submitButton instanceof HTMLButtonElement) {
+        submitButton.disabled = false
+        submitButton.textContent = 'Confirm via WhatsApp'
+      }
+    }
   })
 </script>
