@@ -1,22 +1,5 @@
 ---
-const countries = [
-  'United Kingdom',
-  'United States',
-  'Germany',
-  'France',
-  'Netherlands',
-  'Australia',
-  'Canada',
-  'Japan',
-  'China',
-  'India',
-  'South Africa',
-  'Uganda',
-  'Tanzania',
-  'Rwanda',
-  'Ethiopia',
-  'Other',
-]
+import countries from '@/data/countries.json'
 ---
 
 <form class="booking-panel booking-panel-full" id="booking-panel">
@@ -80,7 +63,7 @@ const countries = [
     <label for="country">Country of Origin</label>
     <select id="country" name="country" required>
       <option value="">Select Country</option>
-      {countries.map((country) => <option value={country}>{country}</option>)}
+      {countries.map((country) => <option value={country['alpha-2']}>{country.name}</option>)}
     </select>
   </div>
   <div class="field">
