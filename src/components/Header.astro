@@ -1,0 +1,30 @@
+---
+const links = [
+  { href: '#pricing', label: 'Classes' },
+  { href: '/reviews', label: 'Reviews' },
+  { href: '#faq', label: 'FAQ' },
+  { href: '#contact', label: 'Contact' },
+]
+---
+
+<div class="disclaimer-ticker" role="note" aria-label="Important disclaimer">
+  <div class="ticker-track">
+    <span>SafariRail is not the official Kenya Railways website. We are an independent third-party booking assistance service.</span>
+    <span>SafariRail is not the official Kenya Railways website. We are an independent third-party booking assistance service.</span>
+    <span>SafariRail is not the official Kenya Railways website. We are an independent third-party booking assistance service.</span>
+  </div>
+</div>
+
+<header class="site-header">
+  <a class="brand" href="/" aria-label="SafariRail home">
+    <img class="brand-logo" src="/safarirail.png" alt="SafariRail" />
+  </a>
+
+  <nav class="nav-links" aria-label="Primary navigation">
+    {links.map((link) => <a href={link.href}>{link.label}</a>)}
+  </nav>
+
+  <a class="header-action" href="#pricing">
+    Book Now
+  </a>
+</header>

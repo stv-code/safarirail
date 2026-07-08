@@ -1,0 +1,65 @@
+---
+import '../styles/global.css'
+
+const {
+  title = 'SafariRail | SGR Booking Assistance for Tourists in Kenya',
+  description = 'Hassle-free Madaraka Express SGR ticket booking assistance for tourists visiting Kenya. No M-Pesa? No problem. Economy, First Class & Premium.',
+} = Astro.props
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    <meta name="keywords" content="SGR Kenya, Madaraka Express, train booking Kenya, safari rail, Nairobi Mombasa train" />
+    <meta property="og:title" content="SafariRail | SGR Booking for Tourists" />
+    <meta property="og:description" content="Hassle-free Madaraka Express ticket booking. We help tourists book Kenya SGR tickets - no local payment method required." />
+    <meta property="og:url" content="https://safarirail.co.ke" />
+    <meta property="og:type" content="website" />
+    <meta name="theme-color" content="#12342f" />
+    <title>{title}</title>
+    <link rel="preconnect" href="https://images.unsplash.com" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <slot />
+    <div class="disclaimer-modal" id="disclaimer-modal" aria-hidden="true">
+      <div class="disclaimer-card" role="dialog" aria-modal="true" aria-labelledby="disclaimer-title">
+        <p class="eyebrow">Important notice</p>
+        <h2 id="disclaimer-title">SafariRail is not the official SGR or Kenya Railways website.</h2>
+        <p>
+          This website merely exists to help travellers request ticket booking assistance. We are an independent third-party service and are not affiliated with, endorsed by, or representing Kenya Railways Corporation.
+        </p>
+        <p>
+          If you prefer to book directly, use the official Kenya Railways ticketing website or visit the station.
+        </p>
+        <div class="disclaimer-actions">
+          <a class="ghost-dark-button" href="https://metickets.krc.co.ke" target="_blank" rel="noopener noreferrer">Go to official site</a>
+          <button class="primary-button" id="accept-disclaimer" type="button">I understand and accept</button>
+        </div>
+      </div>
+    </div>
+    <script>
+      const disclaimerModal = document.querySelector('#disclaimer-modal')
+      const acceptDisclaimer = document.querySelector('#accept-disclaimer')
+      const acceptedKey = 'safarirail-third-party-disclaimer-accepted'
+
+      if (disclaimerModal instanceof HTMLElement && localStorage.getItem(acceptedKey) !== 'true') {
+        disclaimerModal.setAttribute('aria-hidden', 'false')
+        document.documentElement.classList.add('modal-open')
+      }
+
+      acceptDisclaimer?.addEventListener('click', () => {
+        localStorage.setItem(acceptedKey, 'true')
+        if (disclaimerModal instanceof HTMLElement) {
+          disclaimerModal.setAttribute('aria-hidden', 'true')
+        }
+        document.documentElement.classList.remove('modal-open')
+      })
+    </script>
+  </body>
+</html>

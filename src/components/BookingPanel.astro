@@ -1,0 +1,164 @@
+---
+const countries = [
+  'United Kingdom',
+  'United States',
+  'Germany',
+  'France',
+  'Netherlands',
+  'Australia',
+  'Canada',
+  'Japan',
+  'China',
+  'India',
+  'South Africa',
+  'Uganda',
+  'Tanzania',
+  'Rwanda',
+  'Ethiopia',
+  'Other',
+]
+---
+
+<form class="booking-panel booking-panel-full" id="booking-panel">
+  <div class="booking-summary">
+    <p class="eyebrow">Passenger Details</p>
+    <h2>Request SGR booking assistance</h2>
+    <p>
+      Ticket message sent to your email/WhatsApp after payment confirmation. You must print it at the station.
+    </p>
+  </div>
+
+  <div class="field">
+    <label for="class">Class</label>
+    <select id="class" name="class">
+      <option value="Economy" data-adult="2000" data-child="1250">Economy - KES 2,000 adult</option>
+      <option value="First Class" data-adult="5500" data-child="3250">First Class - KES 5,500 adult</option>
+      <option value="Premium" data-adult="13500" data-child="7500">Premium - KES 13,500 adult</option>
+    </select>
+  </div>
+  <div class="field">
+    <label for="date">Travel Date</label>
+    <input id="date" name="date" type="date" required />
+  </div>
+  <div class="field">
+    <label for="departure">Preferred Departure</label>
+    <select id="departure" name="departure">
+      <option value="Morning (08:00)">Morning (08:00)</option>
+      <option value="Afternoon (15:00)">Afternoon (15:00)</option>
+      <option value="Night (22:00)">Night (22:00)</option>
+    </select>
+  </div>
+  <div class="field">
+    <label for="adults">Adults</label>
+    <select id="adults" name="adults">
+      {[1, 2, 3, 4, 5, 6].map((number) => <option value={number}>{number}</option>)}
+    </select>
+  </div>
+  <div class="field">
+    <label for="children">Children (3-11)</label>
+    <select id="children" name="children">
+      {[0, 1, 2, 3, 4].map((number) => <option value={number}>{number}</option>)}
+    </select>
+  </div>
+  <div class="field">
+    <label for="name">Full Name (as per Passport)</label>
+    <input id="name" name="name" type="text" placeholder="e.g. John Michael Smith" required />
+  </div>
+  <div class="field">
+    <label for="passport">Passport / ID Number</label>
+    <input id="passport" name="passport" type="text" required />
+  </div>
+  <div class="field">
+    <label for="gender">Gender</label>
+    <select id="gender" name="gender" required>
+      <option value="">Select</option>
+      <option value="Male">Male</option>
+      <option value="Female">Female</option>
+    </select>
+  </div>
+  <div class="field">
+    <label for="country">Country of Origin</label>
+    <select id="country" name="country" required>
+      <option value="">Select Country</option>
+      {countries.map((country) => <option value={country}>{country}</option>)}
+    </select>
+  </div>
+  <div class="field">
+    <label for="email">Email Address</label>
+    <input id="email" name="email" type="email" placeholder="tickets@example.com" required />
+  </div>
+  <div class="booking-total">
+    <span>Estimated Total</span>
+    <strong id="booking-total">KES 2,000</strong>
+    <small>Children under 3 travel free.</small>
+  </div>
+  <button class="primary-button" type="submit">Confirm via WhatsApp</button>
+</form>
+
+<script>
+  const form = document.querySelector('#booking-panel')
+  const dateInput = document.querySelector('#date')
+  const classInput = document.querySelector('#class')
+  const adultsInput = document.querySelector('#adults')
+  const childrenInput = document.querySelector('#children')
+  const totalOutput = document.querySelector('#booking-total')
+
+  function getSelectedClass() {
+    if (!(classInput instanceof HTMLSelectElement)) return null
+    return classInput.selectedOptions[0]
+  }
+
+  function calculateTotal() {
+    const selectedClass = getSelectedClass()
+    if (!selectedClass || !(adultsInput instanceof HTMLSelectElement) || !(childrenInput instanceof HTMLSelectElement)) return 0
+
+    const adultPrice = Number(selectedClass.dataset.adult || 0)
+    const childPrice = Number(selectedClass.dataset.child || 0)
+    const adults = Number(adultsInput.value || 1)
+    const children = Number(childrenInput.value || 0)
+
+    return adults * adultPrice + children * childPrice
+  }
+
+  function updateTotal() {
+    if (!(totalOutput instanceof HTMLElement)) return
+    totalOutput.textContent = `KES ${calculateTotal().toLocaleString()}`
+  }
+
+  if (dateInput instanceof HTMLInputElement) {
+    dateInput.min = new Date().toISOString().split('T')[0]
+  }
+
+  classInput?.addEventListener('change', updateTotal)
+  adultsInput?.addEventListener('change', updateTotal)
+  childrenInput?.addEventListener('change', updateTotal)
+  updateTotal()
+
+  form?.addEventListener('submit', (event) => {
+    event.preventDefault()
+
+    if (!(form instanceof HTMLFormElement)) return
+
+    const data = new FormData(form)
+    const message = [
+      'Hi SafariRail,',
+      '',
+      'I would like help booking an SGR ticket.',
+      '',
+      `Name: ${data.get('name')}`,
+      `Passport/ID: ${data.get('passport')}`,
+      `Gender: ${data.get('gender')}`,
+      `Country: ${data.get('country')}`,
+      `Class: ${data.get('class')}`,
+      `Date: ${data.get('date')}`,
+      `Time: ${data.get('departure')}`,
+      `Passengers: ${data.get('adults')} adult(s), ${data.get('children')} child(ren)`,
+      `Estimated Total: KES ${calculateTotal().toLocaleString()}`,
+      `Email: ${data.get('email')}`,
+      '',
+      'Please confirm availability and payment details. Thank you!',
+    ].join('\n')
+
+    window.open(`https://wa.me/254769869503?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer')
+  })
+</script>

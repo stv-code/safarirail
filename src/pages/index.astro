@@ -1,0 +1,239 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import Header from '../components/Header.astro'
+import BookingPanel from '../components/BookingPanel.astro'
+import Footer from '../components/Footer.astro'
+
+const infoStrip = [
+  'Third-party booking agency - not affiliated with Kenya Railways Corporation',
+  'Tickets delivered via Email, WhatsApp or Telegram',
+  'Wise, Remitly, Sendwave, Western Union, and Crypto accepted',
+]
+
+const classes = [
+  {
+    key: 'economy',
+    label: 'Economy',
+    adultPrice: '2,000',
+    childPrice: '1,250',
+    service: '500',
+    ticketAdult: '1,500',
+    ticketChild: '750',
+    badge: 'Most Popular',
+    features: ['Standard comfortable seating', 'Air conditioning throughout', 'Luggage storage space', 'Traveller booking support'],
+  },
+  {
+    key: 'first',
+    label: 'First Class',
+    adultPrice: '5,500',
+    childPrice: '3,250',
+    service: '1,000',
+    ticketAdult: '4,500',
+    ticketChild: '2,250',
+    badge: '',
+    features: ['Reclining spacious seats', 'Premium lounge access', 'Tray tables & power outlets', 'Priority boarding'],
+  },
+  {
+    key: 'premium',
+    label: 'Premium',
+    adultPrice: '13,500',
+    childPrice: '7,500',
+    service: '1,500',
+    ticketAdult: '12,000',
+    ticketChild: '6,000',
+    badge: '',
+    features: ['Private luxury compartment', 'Complimentary meals & drinks', 'Personal concierge service', 'Best views through Tsavo'],
+  },
+]
+
+const paymentMethods = [
+  ['Wise', 'Transfer to M-Pesa - 0769 869 503'],
+  ['Remitly', 'Transfer to M-Pesa - 0769 869 503'],
+  ['Sendwave', 'Transfer to M-Pesa - 0769 869 503'],
+  ['Western Union', 'Contact us for recipient details'],
+  ['Crypto (USDT/BTC/BNB)', 'WhatsApp for wallet address'],
+]
+
+const faqs = [
+  ['Are you the official SGR website?', 'No. We are a private third-party agency helping tourists book tickets. We are NOT selling tickets - we assist you in booking them. The official website is metickets.krc.co.ke.'],
+  ['How do I receive my ticket?', 'After booking, we send the M-Pesa message and ticket number to your email, WhatsApp, or Telegram. You MUST use this message to physically print your ticket at the station before boarding.'],
+  ['What payment methods do you accept?', 'We accept Wise, Remitly, Sendwave, and Western Union (all remitted to M-Pesa), as well as USDT, BTC, and BNB crypto.'],
+  ['What is your refund and cancellation policy?', 'We do not handle refunds. Cancellation is strictly handled by Kenya Railways in person at the station.'],
+  ['Do children travel for free?', 'Children under 3 years travel free. Children aged 3-11 pay a reduced child fare.'],
+]
+---
+
+<BaseLayout>
+  <main>
+    <section class="hero">
+      <Header />
+      <div class="hero-content">
+        <p class="eyebrow">Madaraka Express - Nairobi to Mombasa</p>
+        <h1>Experience Kenya <em>by Rail</em></h1>
+        <p class="hero-copy">
+          The hassle-free way for tourists to book SGR tickets. No M-Pesa? No Kenyan bank account? No problem.
+        </p>
+        <p class="hero-caveat">
+          Not comfortable with third parties? We encourage you to book directly at the station.
+        </p>
+        <div class="hero-actions">
+          <a class="primary-button" href="#pricing">Start Booking</a>
+          <a class="ghost-button" href="https://metickets.krc.co.ke/index.php" target="_blank" rel="noopener noreferrer">Official KRC Site</a>
+        </div>
+      </div>
+      <div class="hero-bottom" id="booking">
+        <BookingPanel />
+      </div>
+    </section>
+
+    <section class="info-strip">
+      {infoStrip.map((item) => <span>{item}</span>)}
+    </section>
+
+    <section class="section pricing-section" id="pricing">
+      <div class="section-heading">
+        <p class="eyebrow">Ticket Classes</p>
+        <div>
+          <h2>Choose Your Journey</h2>
+          <p>All prices include our booking assistance fee. Select the class that suits your travel style.</p>
+        </div>
+      </div>
+      <div class="pricing-grid">
+        {classes.map((tier) => (
+          <article class={`pricing-card ${tier.badge ? 'featured' : ''}`}>
+            {tier.badge && <p class="pricing-badge">{tier.badge}</p>}
+            <h3>{tier.label}</h3>
+            <div class="price"><sup>KES</sup> {tier.adultPrice}</div>
+            <p class="price-unit">per adult</p>
+            <div class="fare-breakdown">
+              <strong>Fare Breakdown</strong>
+              <span>Adult: {tier.adultPrice} (ticket {tier.ticketAdult} + service {tier.service})</span>
+              <span>Child (3-11): {tier.childPrice} (ticket {tier.ticketChild} + service {tier.service})</span>
+              <span>Child (&lt;3): Free</span>
+            </div>
+            <ul>
+              {tier.features.map((feature) => <li>{feature}</li>)}
+            </ul>
+            <a class="primary-button" href="#booking">Select {tier.label}</a>
+          </article>
+        ))}
+      </div>
+    </section>
+
+    <section class="image-feature">
+      <div>
+        <p class="eyebrow">Ticket delivery</p>
+        <h2>We send the M-Pesa message and ticket number.</h2>
+        <p>
+          After booking, your details are sent to your email, WhatsApp, or Telegram. You must use that message to physically print your ticket at the station before boarding.
+        </p>
+      </div>
+    </section>
+
+    <section class="section payment-section">
+      <div class="section-heading">
+        <p class="eyebrow">Secure Payment</p>
+        <div>
+          <h2>Choose your payment method</h2>
+          <p>Make your payment first, then confirm below. Tickets are sent after payment is received. User is responsible for any transfer delays.</p>
+        </div>
+      </div>
+      <div class="payment-grid">
+        {paymentMethods.map(([method, detail]) => (
+          <article>
+            <h3>{method}</h3>
+            <p>{detail}</p>
+          </article>
+        ))}
+      </div>
+      <div class="payment-actions">
+        <a class="primary-button" href="https://wa.me/254769869503?text=Hi%20SafariRail%2C%20I%20have%20made%20a%20payment%20for%20my%20booking.%20Please%20confirm%20receipt.%20Thank%20you!" target="_blank" rel="noopener noreferrer">Confirm via WhatsApp</a>
+        <a class="ghost-dark-button" href="mailto:support@safarirail.co.ke?subject=SafariRail%20Booking%20Payment%20Confirmation&body=Booking%20Details%3A%0A%0AName%3A%0AClass%3A%0ADate%3A%0APassengers%3A%0APayment%20Method%3A%0A%0APlease%20confirm%20receipt.%20Thank%20you.">Confirm via Email</a>
+      </div>
+    </section>
+
+    <section class="section faq-section" id="faq">
+      <div class="section-heading">
+        <p class="eyebrow">Common Questions</p>
+        <div>
+          <h2>Frequently Asked</h2>
+          <p>Everything you need to know before booking with us.</p>
+        </div>
+      </div>
+      <div class="faq-list">
+        {faqs.map(([question, answer]) => (
+          <details>
+            <summary>{question}</summary>
+            <p>{answer}</p>
+          </details>
+        ))}
+      </div>
+      <p class="official-faq">
+        More questions? <a href="https://metickets.krc.co.ke/faqs.php" target="_blank" rel="noopener noreferrer">View official KRC FAQs</a>
+      </p>
+    </section>
+
+    <section class="section contact-section" id="contact">
+      <div class="section-heading">
+        <p class="eyebrow">Get in Touch</p>
+        <div>
+          <h2>Need Help?</h2>
+          <p>Custom itineraries, group bookings, or general questions.</p>
+        </div>
+      </div>
+      <div class="contact-grid">
+        <div class="contact-card">
+          <h3>Email</h3>
+          <a href="mailto:support@safarirail.co.ke">support@safarirail.co.ke</a>
+        </div>
+        <div class="contact-card">
+          <h3>WhatsApp</h3>
+          <a href="https://wa.me/254769869503" target="_blank" rel="noopener noreferrer">+254769869503</a>
+        </div>
+        <div class="fraud-alert">
+          <strong>Fraud Alert:</strong>
+          If you suspect fraudulent activity in our name, contact DCI Kenya, call 911, or visit the nearest police station immediately.
+        </div>
+      </div>
+      <form class="contact-form" id="contact-form">
+        <div class="field">
+          <label for="contact-name">Your Name</label>
+          <input id="contact-name" name="name" type="text" placeholder="John Smith" required />
+        </div>
+        <div class="field">
+          <label for="contact-email">Email Address</label>
+          <input id="contact-email" name="email" type="email" placeholder="john@example.com" required />
+        </div>
+        <div class="field">
+          <label for="message">Message</label>
+          <textarea id="message" name="message" placeholder="I need help with a group booking for..." required></textarea>
+        </div>
+        <button class="primary-button" type="submit">Send Message</button>
+      </form>
+    </section>
+
+    <section class="cta-section">
+      <div>
+        <p class="eyebrow">Booking Confirmed?</p>
+        <h2>Your M-Pesa ticket message will be sent after payment is confirmed.</h2>
+      </div>
+      <a class="primary-button" href="#booking">Start Booking</a>
+    </section>
+  </main>
+  <Footer />
+</BaseLayout>
+
+<script>
+  const contactForm = document.querySelector('#contact-form')
+
+  contactForm?.addEventListener('submit', (submitEvent) => {
+    submitEvent.preventDefault()
+
+    if (!(contactForm instanceof HTMLFormElement)) return
+
+    const data = new FormData(contactForm)
+    const message = data.get('message') || ''
+
+    window.location.href = `mailto:support@safarirail.co.ke?subject=SafariRail%20Message&body=${encodeURIComponent(String(message))}`
+  })
+</script>

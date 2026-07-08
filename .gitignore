@@ -1,7 +1,9 @@
+.astro/
+dist/
 .next/
 node_modules/
 .env*.local
 .env.local
 .vercel
 *.tsbuildinfo
-next-env.d.ts
+astro-dev*.log

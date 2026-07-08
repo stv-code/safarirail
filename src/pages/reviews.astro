@@ -1,0 +1,32 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import Header from '../components/Header.astro'
+import Footer from '../components/Footer.astro'
+---
+
+<BaseLayout
+  title="Traveller Reviews | SafariRail"
+  description="See what tourists say about SafariRail SGR booking assistance for the Madaraka Express."
+>
+  <main>
+    <section class="subhero">
+      <Header />
+      <div>
+        <p class="eyebrow">Social Proof</p>
+        <h1>Traveller Reviews</h1>
+        <p>See what others are saying about our booking assistance service.</p>
+      </div>
+    </section>
+
+    <section class="section reviews-empty">
+      <p class="eyebrow">Recent Feedback</p>
+      <h2>What Travellers Say</h2>
+      <p>
+        Reviews are checked before going live. For immediate booking help, contact SafariRail by WhatsApp or email.
+      </p>
+      <a class="primary-button" href="https://wa.me/254769869503" target="_blank" rel="noopener noreferrer">Message WhatsApp</a>
+    </section>
+  </main>
+  <Footer />
+</BaseLayout>
+
