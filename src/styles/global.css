@@ -85,20 +85,11 @@ select {
 }
 
 .ticker-track span {
-  position: relative;
-  padding-left: 28px;
   font-size: 0.8rem;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   white-space: nowrap;
-}
-
-.ticker-track span::before {
-  content: 'KES';
-  position: absolute;
-  left: 0;
-  color: var(--ochre);
 }
 
 @keyframes ticker-scroll {
@@ -118,8 +109,8 @@ select {
 }
 
 .brand-logo {
-  width: clamp(142px, 18vw, 214px);
-  height: auto;
+  width: auto;
+  height: clamp(58px, 7vw, 76px);
   display: block;
   filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.22));
 }
@@ -830,6 +821,7 @@ h1 {
 }
 
 .footer-brand .brand-logo {
+  height: 88px;
   filter: none;
 }
 
