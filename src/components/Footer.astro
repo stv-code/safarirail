@@ -1,18 +1,22 @@
+---
+import { siteConfig, whatsappBaseUrl } from '@/config/site'
+---
+
 <footer class="site-footer" id="contact">
   <div class="footer-grid">
     <div>
       <a class="brand footer-brand" href="/" aria-label="SafariRail home">
-        <img class="brand-logo" src="/safarirail.png" alt="SafariRail" />
+        <img class="brand-logo" src="/safarirail.png" alt="SafariRail" width="1680" height="1024" loading="lazy" decoding="async" />
       </a>
       <p>
         SafariRail is an independent third-party booking agency. Not affiliated with, endorsed by, or representing Kenya Railways Corporation (KRC).
       </p>
-      <a href="https://metickets.krc.co.ke" target="_blank" rel="noopener noreferrer">Official KRC site: metickets.krc.co.ke</a>
+      <a href={siteConfig.officialKrcUrl} target="_blank" rel="noopener noreferrer">Official KRC site: metickets.krc.co.ke</a>
     </div>
     <div>
       <h2>Talk to us</h2>
-      <a href="https://wa.me/254769869503" target="_blank" rel="noopener noreferrer">WhatsApp: +254 769 869 503</a>
-      <a href="mailto:support@safarirail.co.ke">support@safarirail.co.ke</a>
+      <a href={whatsappBaseUrl} target="_blank" rel="noopener noreferrer">WhatsApp: {siteConfig.whatsappDisplay}</a>
+      <a href={`mailto:${siteConfig.supportEmail}`}>{siteConfig.supportEmail}</a>
       <span>Nairobi, Kenya</span>
     </div>
     <div>

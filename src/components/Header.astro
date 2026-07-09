@@ -1,9 +1,9 @@
 ---
 const links = [
-  { href: '#pricing', label: 'Classes' },
+  { href: '/#pricing', label: 'Classes' },
   { href: '/reviews', label: 'Reviews' },
-  { href: '#faq', label: 'FAQ' },
-  { href: '#contact', label: 'Contact' },
+  { href: '/#faq', label: 'FAQ' },
+  { href: '/#contact', label: 'Contact' },
 ]
 ---
 
@@ -17,10 +17,14 @@ const links = [
 
 <header class="site-header">
   <a class="brand" href="/" aria-label="SafariRail home">
-    <img class="brand-logo" src="/safarirail.png" alt="SafariRail" />
+    <img class="brand-logo" src="/safarirail.png" alt="SafariRail" width="1680" height="1024" decoding="async" />
   </a>
 
-  <nav class="nav-links" aria-label="Primary navigation">
+  <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="primary-navigation">
+    Menu
+  </button>
+
+  <nav class="nav-links" id="primary-navigation" aria-label="Primary navigation">
     {links.map((link) => <a href={link.href}>{link.label}</a>)}
   </nav>
 
@@ -28,3 +32,15 @@ const links = [
     Book Now
   </a>
 </header>
+
+<script>
+  const navToggle = document.querySelector('.nav-toggle')
+  const primaryNavigation = document.querySelector('#primary-navigation')
+
+  navToggle?.addEventListener('click', () => {
+    if (!(navToggle instanceof HTMLButtonElement) || !(primaryNavigation instanceof HTMLElement)) return
+    const isOpen = navToggle.getAttribute('aria-expanded') === 'true'
+    navToggle.setAttribute('aria-expanded', String(!isOpen))
+    primaryNavigation.dataset.open = String(!isOpen)
+  })
+</script>

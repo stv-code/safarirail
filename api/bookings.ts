@@ -1,3 +1,16 @@
+import { createCipheriv, createHash, randomBytes, randomUUID } from 'node:crypto'
+import {
+  bookingLimits,
+  calculateBookingTotal,
+  departures,
+  genders,
+  getTicketClass,
+  siteConfig,
+  type Departure,
+  type Gender,
+  type TicketClassLabel,
+} from '../src/config/business'
+
 type BookingPayload = {
   travelClass?: unknown
   travelDate?: unknown
@@ -12,22 +25,22 @@ type BookingPayload = {
   consent?: unknown
 }
 
-type ValidationResult =
+export type ValidationResult =
   | { ok: true; value: NormalizedBooking }
   | { ok: false; errors: string[] }
 
-type NormalizedBooking = {
+export type NormalizedBooking = {
   reference: string
-  travelClass: 'Economy' | 'First Class' | 'Premium'
+  travelClass: TicketClassLabel
   travelDate: string
-  departure: 'Morning (08:00)' | 'Afternoon (15:00)' | 'Night (22:00)'
+  departure: Departure
   adults: number
   children: number
   totalAmount: number
   passenger: {
     fullName: string
     passportId: string
-    gender: 'Male' | 'Female'
+    gender: Gender
     countryCode: string
     email: string
   }
@@ -40,44 +53,110 @@ type ApiResponse = {
   errors?: string[]
 }
 
-const TRAVEL_CLASSES = {
-  Economy: { adult: 2000, child: 1250 },
-  'First Class': { adult: 5500, child: 3250 },
-  Premium: { adult: 13500, child: 7500 },
-} as const
-
-const DEPARTURES = new Set(['Morning (08:00)', 'Afternoon (15:00)', 'Night (22:00)'])
-const GENDERS = new Set(['Male', 'Female'])
 const RATE_LIMIT_WINDOW_MS = 60_000
 const RATE_LIMIT_MAX_REQUESTS = 5
-const rateLimits = new Map<string, { count: number; resetAt: number }>()
+const PASSPORT_ID_ENCRYPTION_KEY_ENV = 'PASSPORT_ID_ENCRYPTION_KEY'
 
-function sendJson(res: any, statusCode: number, body: ApiResponse) {
+type HeaderValue = string | string[] | undefined
+
+type BookingRequest = {
+  method?: string
+  headers: Record<string, HeaderValue>
+  socket?: {
+    remoteAddress?: string
+  }
+  body?: unknown
+}
+
+type BookingResponse = {
+  statusCode?: number
+  setHeader(name: string, value: string): void
+  end(body?: string): void
+}
+
+type RateLimitResult = {
+  limited: boolean
+}
+
+type RateLimiter = {
+  check(key: string): Promise<RateLimitResult>
+}
+
+type Env = NodeJS.ProcessEnv
+type Fetcher = typeof fetch
+
+class InMemoryRateLimiter implements RateLimiter {
+  private readonly requests = new Map<string, { count: number; resetAt: number }>()
+
+  async check(key: string) {
+    const now = Date.now()
+    const current = this.requests.get(key)
+
+    if (!current || current.resetAt <= now) {
+      this.requests.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS })
+      return { limited: false }
+    }
+
+    current.count += 1
+    return { limited: current.count > RATE_LIMIT_MAX_REQUESTS }
+  }
+}
+
+class UpstashRateLimiter implements RateLimiter {
+  constructor(
+    private readonly restUrl: string,
+    private readonly token: string,
+    private readonly fetcher: Fetcher = fetch,
+  ) {}
+
+  async check(key: string) {
+    const redisKey = `safarirail:bookings:${key}`
+    const increment = await this.command<number>(['INCR', redisKey])
+    if (increment === 1) {
+      await this.command<number>(['PEXPIRE', redisKey, String(RATE_LIMIT_WINDOW_MS)])
+    }
+    return { limited: increment > RATE_LIMIT_MAX_REQUESTS }
+  }
+
+  private async command<T>(command: string[]) {
+    const response = await this.fetcher(`${this.restUrl.replace(/\/$/, '')}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(command),
+    })
+    if (!response.ok) throw new Error(`Rate limiter failed with status ${response.status}`)
+    const payload = (await response.json()) as { result?: T; error?: string }
+    if (payload.error) throw new Error('Rate limiter command failed')
+    return payload.result as T
+  }
+}
+
+function createRateLimiter(env: Env): RateLimiter {
+  if (env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN) {
+    return new UpstashRateLimiter(env.UPSTASH_REDIS_REST_URL, env.UPSTASH_REDIS_REST_TOKEN)
+  }
+
+  return new InMemoryRateLimiter()
+}
+
+const rateLimiter = createRateLimiter(process.env)
+
+function sendJson(res: BookingResponse, statusCode: number, body: ApiResponse) {
   res.statusCode = statusCode
   res.setHeader('Content-Type', 'application/json; charset=utf-8')
   res.setHeader('Cache-Control', 'no-store')
   res.end(JSON.stringify(body))
 }
 
-function getClientIp(req: any) {
+function getClientIp(req: BookingRequest) {
   const forwardedFor = req.headers['x-forwarded-for']
   if (typeof forwardedFor === 'string' && forwardedFor.trim()) {
     return forwardedFor.split(',')[0].trim()
   }
   return req.socket?.remoteAddress || 'unknown'
-}
-
-function isRateLimited(ip: string) {
-  const now = Date.now()
-  const current = rateLimits.get(ip)
-
-  if (!current || current.resetAt <= now) {
-    rateLimits.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS })
-    return false
-  }
-
-  current.count += 1
-  return current.count > RATE_LIMIT_MAX_REQUESTS
 }
 
 function cleanText(value: unknown, maxLength: number) {
@@ -102,11 +181,64 @@ function generateBookingReference() {
     String(date.getUTCMonth() + 1).padStart(2, '0'),
     String(date.getUTCDate()).padStart(2, '0'),
   ].join('')
-  const random = crypto.randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase()
+  const random = randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase()
   return `SR-${stamp}-${random}`
 }
 
-function validatePayload(payload: BookingPayload): ValidationResult {
+function isDeparture(value: string): value is Departure {
+  return (departures as readonly string[]).includes(value)
+}
+
+function isGender(value: string): value is Gender {
+  return (genders as readonly string[]).includes(value)
+}
+
+function isTicketClassLabel(value: string): value is TicketClassLabel {
+  return Boolean(getTicketClass(value))
+}
+
+function getEncryptionKey(env: Env) {
+  const rawKey = env[PASSPORT_ID_ENCRYPTION_KEY_ENV]
+  if (!rawKey) {
+    throw new Error(`${PASSPORT_ID_ENCRYPTION_KEY_ENV} environment variable is not configured.`)
+  }
+
+  const trimmed = rawKey.trim()
+  const decoded = Buffer.from(trimmed, 'base64')
+  if (decoded.length === 32) return decoded
+
+  const hexDecoded = Buffer.from(trimmed, 'hex')
+  if (hexDecoded.length === 32) return hexDecoded
+
+  return createHash('sha256').update(trimmed).digest()
+}
+
+export function encryptPassportId(passportId: string, env: Env = process.env) {
+  const key = getEncryptionKey(env)
+  const iv = randomBytes(12)
+  const cipher = createCipheriv('aes-256-gcm', key, iv)
+  const ciphertext = Buffer.concat([cipher.update(passportId, 'utf8'), cipher.final()])
+  const authTag = cipher.getAuthTag()
+
+  return [
+    'v1',
+    iv.toString('base64url'),
+    authTag.toString('base64url'),
+    ciphertext.toString('base64url'),
+  ].join(':')
+}
+
+function prepareSensitivePassengerFields(passenger: NormalizedBooking['passenger'], env: Env) {
+  return {
+    fullName: passenger.fullName,
+    passportId: encryptPassportId(passenger.passportId, env),
+    gender: passenger.gender,
+    countryCode: passenger.countryCode,
+    email: passenger.email,
+  }
+}
+
+export function validatePayload(payload: BookingPayload, referenceFactory = generateBookingReference): ValidationResult {
   const errors: string[] = []
   const travelClass = cleanText(payload.travelClass, 32)
   const departure = cleanText(payload.departure, 32)
@@ -119,8 +251,8 @@ function validatePayload(payload: BookingPayload): ValidationResult {
   const adults = parseInteger(payload.adults, 1)
   const children = parseInteger(payload.children, 0)
 
-  if (!(travelClass in TRAVEL_CLASSES)) errors.push('Select a valid class.')
-  if (!DEPARTURES.has(departure)) errors.push('Select a valid departure.')
+  if (!isTicketClassLabel(travelClass)) errors.push('Select a valid class.')
+  if (!isDeparture(departure)) errors.push('Select a valid departure.')
   if (!/^\d{4}-\d{2}-\d{2}$/.test(travelDate) || Number.isNaN(Date.parse(`${travelDate}T00:00:00Z`))) {
     errors.push('Enter a valid travel date.')
   } else {
@@ -129,32 +261,31 @@ function validatePayload(payload: BookingPayload): ValidationResult {
     const selectedDate = new Date(`${travelDate}T00:00:00Z`)
     if (selectedDate < today) errors.push('Travel date cannot be in the past.')
   }
-  if (adults < 1 || adults > 6) errors.push('Adults must be between 1 and 6.')
-  if (children < 0 || children > 4) errors.push('Children must be between 0 and 4.')
+  if (adults < bookingLimits.minAdults || adults > bookingLimits.maxAdults) errors.push('Adults must be between 1 and 6.')
+  if (children < bookingLimits.minChildren || children > bookingLimits.maxChildren) errors.push('Children must be between 0 and 4.')
   if (fullName.length < 2) errors.push('Full name is required.')
   if (passportId.length < 3) errors.push('Passport or ID number is required.')
-  if (!GENDERS.has(gender)) errors.push('Select a valid gender.')
+  if (!isGender(gender)) errors.push('Select a valid gender.')
   if (!/^[A-Z]{2}$/.test(countryCode)) errors.push('Select a valid country.')
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push('Enter a valid email address.')
   if (payload.consent !== true) errors.push('Consent is required before submitting.')
 
-  if (errors.length > 0 || !(travelClass in TRAVEL_CLASSES)) return { ok: false, errors }
+  if (errors.length > 0 || !isTicketClassLabel(travelClass) || !isDeparture(departure) || !isGender(gender)) return { ok: false, errors }
 
-  const prices = TRAVEL_CLASSES[travelClass as keyof typeof TRAVEL_CLASSES]
   return {
     ok: true,
     value: {
-      reference: generateBookingReference(),
-      travelClass: travelClass as NormalizedBooking['travelClass'],
+      reference: referenceFactory(),
+      travelClass,
       travelDate,
-      departure: departure as NormalizedBooking['departure'],
+      departure,
       adults,
       children,
-      totalAmount: adults * prices.adult + children * prices.child,
+      totalAmount: calculateBookingTotal(travelClass, adults, children),
       passenger: {
         fullName,
         passportId,
-        gender: gender as NormalizedBooking['passenger']['gender'],
+        gender,
         countryCode,
         email,
       },
@@ -162,15 +293,17 @@ function validatePayload(payload: BookingPayload): ValidationResult {
   }
 }
 
-async function persistBooking(booking: NormalizedBooking) {
-  const supabaseUrl = process.env.SUPABASE_URL
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+export async function persistBooking(booking: NormalizedBooking, env: Env = process.env, fetcher: Fetcher = fetch) {
+  const supabaseUrl = env.SUPABASE_URL
+  const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY
 
   if (!supabaseUrl || !serviceRoleKey) {
     throw new Error('Supabase environment variables are not configured.')
   }
 
-  const response = await fetch(`${supabaseUrl.replace(/\/$/, '')}/rest/v1/rpc/create_booking`, {
+  const sensitivePassengerFields = prepareSensitivePassengerFields(booking.passenger, env)
+
+  const response = await fetcher(`${supabaseUrl.replace(/\/$/, '')}/rest/v1/rpc/create_booking`, {
     method: 'POST',
     headers: {
       apikey: serviceRoleKey,
@@ -185,21 +318,20 @@ async function persistBooking(booking: NormalizedBooking) {
       p_adults: booking.adults,
       p_children: booking.children,
       p_total_amount: booking.totalAmount,
-      p_full_name: booking.passenger.fullName,
-      p_passport_id: booking.passenger.passportId,
-      p_gender: booking.passenger.gender,
-      p_country_code: booking.passenger.countryCode,
-      p_email: booking.passenger.email,
+      p_full_name: sensitivePassengerFields.fullName,
+      p_passport_id: sensitivePassengerFields.passportId,
+      p_gender: sensitivePassengerFields.gender,
+      p_country_code: sensitivePassengerFields.countryCode,
+      p_email: sensitivePassengerFields.email,
     }),
   })
 
   if (!response.ok) {
-    const detail = await response.text()
-    throw new Error(`Supabase booking insert failed: ${response.status} ${detail}`)
+    throw new Error(`Supabase booking insert failed: ${response.status}`)
   }
 }
 
-export default async function handler(req: any, res: any) {
+export default async function handler(req: BookingRequest, res: BookingResponse) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST')
     sendJson(res, 405, { message: 'Method not allowed.' })
@@ -207,7 +339,8 @@ export default async function handler(req: any, res: any) {
   }
 
   const ip = getClientIp(req)
-  if (isRateLimited(ip)) {
+  const rateLimit = await rateLimiter.check(ip)
+  if (rateLimit.limited) {
     sendJson(res, 429, { message: 'Too many booking attempts. Please wait a minute and try again.' })
     return
   }
@@ -226,10 +359,10 @@ export default async function handler(req: any, res: any) {
     const whatsappMessage = `Hi SafariRail, my secure booking request reference is ${validation.value.reference}. Please confirm availability and payment details.`
     sendJson(res, 201, {
       bookingReference: validation.value.reference,
-      whatsappUrl: `https://wa.me/254769869503?text=${encodeURIComponent(whatsappMessage)}`,
+      whatsappUrl: `https://wa.me/${siteConfig.whatsappNumber}?text=${encodeURIComponent(whatsappMessage)}`,
     })
   } catch (error) {
-    console.error(error)
+    console.error(error instanceof Error ? error.message : 'Unknown booking submission error')
     sendJson(res, 500, { message: 'We could not submit your booking right now. Please try again later.' })
   }
 }

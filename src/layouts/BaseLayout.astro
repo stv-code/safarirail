@@ -1,10 +1,14 @@
 ---
 import '../styles/global.css'
+import { siteConfig } from '@/config/site'
 
 const {
   title = 'SafariRail | SGR Booking Assistance for Tourists in Kenya',
   description = 'Hassle-free Madaraka Express SGR ticket booking assistance for tourists visiting Kenya. No M-Pesa? No problem. Economy, First Class & Premium.',
+  canonical = siteConfig.url,
 } = Astro.props
+
+const socialImage = `${siteConfig.url}/safarirail.png`
 ---
 
 <!doctype html>
@@ -13,11 +17,16 @@ const {
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content={description} />
-    <meta name="keywords" content="SGR Kenya, Madaraka Express, train booking Kenya, safari rail, Nairobi Mombasa train" />
-    <meta property="og:title" content="SafariRail | SGR Booking for Tourists" />
-    <meta property="og:description" content="Hassle-free Madaraka Express ticket booking. We help tourists book Kenya SGR tickets - no local payment method required." />
-    <meta property="og:url" content="https://safarirail.co.ke" />
+    <link rel="canonical" href={canonical} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
     <meta property="og:type" content="website" />
+    <meta property="og:image" content={socialImage} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={socialImage} />
     <meta name="theme-color" content="#12342f" />
     <title>{title}</title>
     <link rel="preconnect" href="https://images.unsplash.com" />
@@ -38,27 +47,94 @@ const {
           If you prefer to book directly, use the official Kenya Railways ticketing website or visit the station.
         </p>
         <div class="disclaimer-actions">
-          <a class="ghost-dark-button" href="https://metickets.krc.co.ke" target="_blank" rel="noopener noreferrer">Go to official site</a>
+          <a class="ghost-dark-button" href={siteConfig.officialKrcUrl} target="_blank" rel="noopener noreferrer">Go to official site</a>
           <button class="primary-button" id="accept-disclaimer" type="button">I understand and accept</button>
         </div>
       </div>
     </div>
+    <script is:inline type="application/ld+json" set:html={JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'TravelAgency',
+      name: siteConfig.name,
+      url: siteConfig.url,
+      email: siteConfig.supportEmail,
+      areaServed: 'Kenya',
+    })} />
     <script>
       const disclaimerModal = document.querySelector('#disclaimer-modal')
       const acceptDisclaimer = document.querySelector('#accept-disclaimer')
       const acceptedKey = 'safarirail-third-party-disclaimer-accepted'
+      let previousFocus: Element | null = null
 
-      if (disclaimerModal instanceof HTMLElement && localStorage.getItem(acceptedKey) !== 'true') {
+      function getFocusableElements() {
+        if (!(disclaimerModal instanceof HTMLElement)) return []
+        return Array.from(
+          disclaimerModal.querySelectorAll('a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'),
+        )
+      }
+
+      function hasAcceptedDisclaimer() {
+        try {
+          return localStorage.getItem(acceptedKey) === 'true'
+        } catch {
+          return false
+        }
+      }
+
+      function saveAcceptedDisclaimer() {
+        try {
+          localStorage.setItem(acceptedKey, 'true')
+        } catch {
+          // Storage can be unavailable in privacy-restricted contexts.
+        }
+      }
+
+      function openDisclaimer() {
+        if (!(disclaimerModal instanceof HTMLElement)) return
+        previousFocus = document.activeElement
         disclaimerModal.setAttribute('aria-hidden', 'false')
         document.documentElement.classList.add('modal-open')
+        const focusableElements = getFocusableElements()
+        if (focusableElements[0] instanceof HTMLElement) focusableElements[0].focus()
+      }
+
+      function closeDisclaimer() {
+        if (!(disclaimerModal instanceof HTMLElement)) return
+        disclaimerModal.setAttribute('aria-hidden', 'true')
+        document.documentElement.classList.remove('modal-open')
+        if (previousFocus instanceof HTMLElement) previousFocus.focus()
+      }
+
+      if (disclaimerModal instanceof HTMLElement && !hasAcceptedDisclaimer()) {
+        openDisclaimer()
       }
 
       acceptDisclaimer?.addEventListener('click', () => {
-        localStorage.setItem(acceptedKey, 'true')
-        if (disclaimerModal instanceof HTMLElement) {
-          disclaimerModal.setAttribute('aria-hidden', 'true')
+        saveAcceptedDisclaimer()
+        closeDisclaimer()
+      })
+
+      disclaimerModal?.addEventListener('keydown', (event) => {
+        if (!(event instanceof KeyboardEvent)) return
+        if (event.key === 'Escape') {
+          event.preventDefault()
+          closeDisclaimer()
+          return
         }
-        document.documentElement.classList.remove('modal-open')
+        if (event.key !== 'Tab') return
+
+        const focusableElements = getFocusableElements()
+        const first = focusableElements[0]
+        const last = focusableElements[focusableElements.length - 1]
+        if (!(first instanceof HTMLElement) || !(last instanceof HTMLElement)) return
+
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault()
+          last.focus()
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault()
+          first.focus()
+        }
       })
     </script>
   </body>

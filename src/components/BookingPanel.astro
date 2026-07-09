@@ -1,5 +1,6 @@
 ---
 import countries from '@/data/countries.json'
+import { departures, formatKes, siteConfig, ticketClasses } from '@/config/business'
 ---
 
 <form class="booking-panel booking-panel-full" id="booking-panel">
@@ -14,9 +15,11 @@ import countries from '@/data/countries.json'
   <div class="field">
     <label for="class">Class</label>
     <select id="class" name="class">
-      <option value="Economy" data-adult="2000" data-child="1250">Economy - KES 2,000 adult</option>
-      <option value="First Class" data-adult="5500" data-child="3250">First Class - KES 5,500 adult</option>
-      <option value="Premium" data-adult="13500" data-child="7500">Premium - KES 13,500 adult</option>
+      {ticketClasses.map((ticketClass) => (
+        <option value={ticketClass.label} data-adult={ticketClass.adultPrice} data-child={ticketClass.childPrice}>
+          {ticketClass.label} - KES {formatKes(ticketClass.adultPrice)} adult
+        </option>
+      ))}
     </select>
   </div>
   <div class="field">
@@ -26,9 +29,7 @@ import countries from '@/data/countries.json'
   <div class="field">
     <label for="departure">Preferred Departure</label>
     <select id="departure" name="departure">
-      <option value="Morning (08:00)">Morning (08:00)</option>
-      <option value="Afternoon (15:00)">Afternoon (15:00)</option>
-      <option value="Night (22:00)">Night (22:00)</option>
+      {departures.map((departure) => <option value={departure}>{departure}</option>)}
     </select>
   </div>
   <div class="field">
@@ -45,11 +46,11 @@ import countries from '@/data/countries.json'
   </div>
   <div class="field">
     <label for="name">Full Name (as per Passport)</label>
-    <input id="name" name="name" type="text" placeholder="e.g. John Michael Smith" required />
+    <input id="name" name="name" type="text" autocomplete="name" minlength="2" maxlength="120" placeholder="e.g. John Michael Smith" required />
   </div>
   <div class="field">
     <label for="passport">Passport / ID Number</label>
-    <input id="passport" name="passport" type="text" required />
+    <input id="passport" name="passport" type="text" autocomplete="off" minlength="3" maxlength="80" required />
   </div>
   <div class="field">
     <label for="gender">Gender</label>
@@ -73,7 +74,9 @@ import countries from '@/data/countries.json'
   <div class="privacy-consent">
     <input id="privacy-consent" name="consent" type="checkbox" required />
     <label for="privacy-consent">
-      I consent to SafariRail securely storing my booking and passenger details to process this request.
+      I consent to SafariRail storing my booking and passenger identity details only to process this request.
+      Passport/ID details are retained temporarily for booking support and can be deleted on request.
+      <a href={siteConfig.privacyPolicyUrl}>Privacy policy</a>
     </label>
   </div>
   <p class="form-status" id="booking-status" role="status" aria-live="polite"></p>
@@ -82,7 +85,7 @@ import countries from '@/data/countries.json'
     <strong id="booking-total">KES 2,000</strong>
     <small>Children under 3 travel free.</small>
   </div>
-  <button class="primary-button" type="submit">Confirm via WhatsApp</button>
+  <button class="primary-button" type="submit">Submit Secure Booking Request</button>
 </form>
 
 <script>
@@ -160,10 +163,10 @@ import countries from '@/data/countries.json'
       consent: data.get('consent') === 'on',
     }
 
-    if (submitButton instanceof HTMLButtonElement) {
-      submitButton.disabled = true
-      submitButton.textContent = 'Submitting...'
-    }
+      if (submitButton instanceof HTMLButtonElement) {
+        submitButton.disabled = true
+        submitButton.textContent = 'Submitting securely...'
+      }
     setStatus('Submitting your secure booking request...')
 
     try {
@@ -188,7 +191,7 @@ import countries from '@/data/countries.json'
     } finally {
       if (submitButton instanceof HTMLButtonElement) {
         submitButton.disabled = false
-        submitButton.textContent = 'Confirm via WhatsApp'
+        submitButton.textContent = 'Submit Secure Booking Request'
       }
     }
   })

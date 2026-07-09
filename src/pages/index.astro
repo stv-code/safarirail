@@ -3,55 +3,12 @@ import BaseLayout from '../layouts/BaseLayout.astro'
 import Header from '../components/Header.astro'
 import BookingPanel from '../components/BookingPanel.astro'
 import Footer from '../components/Footer.astro'
+import { formatKes, paymentMethods, siteConfig, ticketClasses, whatsappBaseUrl } from '../config/business'
 
 const infoStrip = [
   'Third-party booking agency - not affiliated with Kenya Railways Corporation',
   'Tickets delivered via Email, WhatsApp or Telegram',
   'Wise, Remitly, Sendwave, Western Union, and Crypto accepted',
-]
-
-const classes = [
-  {
-    key: 'economy',
-    label: 'Economy',
-    adultPrice: '2,000',
-    childPrice: '1,250',
-    service: '500',
-    ticketAdult: '1,500',
-    ticketChild: '750',
-    badge: 'Most Popular',
-    features: ['Standard comfortable seating', 'Air conditioning throughout', 'Luggage storage space', 'Traveller booking support'],
-  },
-  {
-    key: 'first',
-    label: 'First Class',
-    adultPrice: '5,500',
-    childPrice: '3,250',
-    service: '1,000',
-    ticketAdult: '4,500',
-    ticketChild: '2,250',
-    badge: '',
-    features: ['Reclining spacious seats', 'Premium lounge access', 'Tray tables & power outlets', 'Priority boarding'],
-  },
-  {
-    key: 'premium',
-    label: 'Premium',
-    adultPrice: '13,500',
-    childPrice: '7,500',
-    service: '1,500',
-    ticketAdult: '12,000',
-    ticketChild: '6,000',
-    badge: '',
-    features: ['Private luxury compartment', 'Complimentary meals & drinks', 'Personal concierge service', 'Best views through Tsavo'],
-  },
-]
-
-const paymentMethods = [
-  ['Wise', 'Transfer to M-Pesa - 0769 869 503'],
-  ['Remitly', 'Transfer to M-Pesa - 0769 869 503'],
-  ['Sendwave', 'Transfer to M-Pesa - 0769 869 503'],
-  ['Western Union', 'Contact us for recipient details'],
-  ['Crypto (USDT/BTC/BNB)', 'WhatsApp for wallet address'],
 ]
 
 const faqs = [
@@ -78,7 +35,7 @@ const faqs = [
         </p>
         <div class="hero-actions">
           <a class="primary-button" href="#pricing">Start Booking</a>
-          <a class="ghost-button" href="https://metickets.krc.co.ke/index.php" target="_blank" rel="noopener noreferrer">Official KRC Site</a>
+          <a class="ghost-button" href={siteConfig.officialKrcBookingUrl} target="_blank" rel="noopener noreferrer">Official KRC Site</a>
         </div>
       </div>
       <div class="hero-bottom" id="booking">
@@ -99,16 +56,16 @@ const faqs = [
         </div>
       </div>
       <div class="pricing-grid">
-        {classes.map((tier) => (
+        {ticketClasses.map((tier) => (
           <article class={`pricing-card ${tier.badge ? 'featured' : ''}`}>
             {tier.badge && <p class="pricing-badge">{tier.badge}</p>}
             <h3>{tier.label}</h3>
-            <div class="price"><sup>KES</sup> {tier.adultPrice}</div>
+            <div class="price"><sup>KES</sup> {formatKes(tier.adultPrice)}</div>
             <p class="price-unit">per adult</p>
             <div class="fare-breakdown">
               <strong>Fare Breakdown</strong>
-              <span>Adult: {tier.adultPrice} (ticket {tier.ticketAdult} + service {tier.service})</span>
-              <span>Child (3-11): {tier.childPrice} (ticket {tier.ticketChild} + service {tier.service})</span>
+              <span>Adult: {formatKes(tier.adultPrice)} (ticket {formatKes(tier.ticketAdult)} + service {formatKes(tier.service)})</span>
+              <span>Child (3-11): {formatKes(tier.childPrice)} (ticket {formatKes(tier.ticketChild)} + service {formatKes(tier.service)})</span>
               <span>Child (&lt;3): Free</span>
             </div>
             <ul>
@@ -135,11 +92,11 @@ const faqs = [
         <p class="eyebrow">Secure Payment</p>
         <div>
           <h2>Choose your payment method</h2>
-          <p>Make your payment first, then confirm below. Tickets are sent after payment is received. User is responsible for any transfer delays.</p>
+          <p>Submit your booking request first, then follow the payment instructions we confirm. Tickets are sent after payment is received. User is responsible for any transfer delays.</p>
         </div>
       </div>
       <div class="payment-grid">
-        {paymentMethods.map(([method, detail]) => (
+        {paymentMethods.map(({ method, detail }) => (
           <article>
             <h3>{method}</h3>
             <p>{detail}</p>
@@ -147,8 +104,8 @@ const faqs = [
         ))}
       </div>
       <div class="payment-actions">
-        <a class="primary-button" href="https://wa.me/254769869503?text=Hi%20SafariRail%2C%20I%20have%20made%20a%20payment%20for%20my%20booking.%20Please%20confirm%20receipt.%20Thank%20you!" target="_blank" rel="noopener noreferrer">Confirm via WhatsApp</a>
-        <a class="ghost-dark-button" href="mailto:support@safarirail.co.ke?subject=SafariRail%20Booking%20Payment%20Confirmation&body=Booking%20Details%3A%0A%0AName%3A%0AClass%3A%0ADate%3A%0APassengers%3A%0APayment%20Method%3A%0A%0APlease%20confirm%20receipt.%20Thank%20you.">Confirm via Email</a>
+        <a class="primary-button" href={`${whatsappBaseUrl}?text=Hi%20SafariRail%2C%20I%20have%20made%20a%20payment%20for%20my%20booking.%20Please%20confirm%20receipt.%20Thank%20you!`} target="_blank" rel="noopener noreferrer">Confirm via WhatsApp</a>
+        <a class="ghost-dark-button" href={`mailto:${siteConfig.supportEmail}?subject=SafariRail%20Booking%20Payment%20Confirmation&body=Booking%20Details%3A%0A%0AName%3A%0AClass%3A%0ADate%3A%0APassengers%3A%0APayment%20Method%3A%0A%0APlease%20confirm%20receipt.%20Thank%20you.`}>Confirm via Email</a>
       </div>
     </section>
 
@@ -169,7 +126,7 @@ const faqs = [
         ))}
       </div>
       <p class="official-faq">
-        More questions? <a href="https://metickets.krc.co.ke/faqs.php" target="_blank" rel="noopener noreferrer">View official KRC FAQs</a>
+        More questions? <a href={siteConfig.officialKrcFaqUrl} target="_blank" rel="noopener noreferrer">View official KRC FAQs</a>
       </p>
     </section>
 
@@ -184,11 +141,11 @@ const faqs = [
       <div class="contact-grid">
         <div class="contact-card">
           <h3>Email</h3>
-          <a href="mailto:support@safarirail.co.ke">support@safarirail.co.ke</a>
+          <a href={`mailto:${siteConfig.supportEmail}`}>{siteConfig.supportEmail}</a>
         </div>
         <div class="contact-card">
           <h3>WhatsApp</h3>
-          <a href="https://wa.me/254769869503" target="_blank" rel="noopener noreferrer">+254769869503</a>
+          <a href={whatsappBaseUrl} target="_blank" rel="noopener noreferrer">{siteConfig.whatsappDisplay}</a>
         </div>
         <div class="fraud-alert">
           <strong>Fraud Alert:</strong>
@@ -223,7 +180,7 @@ const faqs = [
   <Footer />
 </BaseLayout>
 
-<script>
+<script is:inline define:vars={{ supportEmail: siteConfig.supportEmail }}>
   const contactForm = document.querySelector('#contact-form')
 
   contactForm?.addEventListener('submit', (submitEvent) => {
@@ -232,8 +189,11 @@ const faqs = [
     if (!(contactForm instanceof HTMLFormElement)) return
 
     const data = new FormData(contactForm)
+    const name = data.get('name') || ''
+    const email = data.get('email') || ''
     const message = data.get('message') || ''
+    const body = [`Name: ${name}`, `Email: ${email}`, '', String(message)].join('\n')
 
-    window.location.href = `mailto:support@safarirail.co.ke?subject=SafariRail%20Message&body=${encodeURIComponent(String(message))}`
+    window.location.href = `mailto:${supportEmail}?subject=SafariRail%20Message&body=${encodeURIComponent(body)}`
   })
 </script>
