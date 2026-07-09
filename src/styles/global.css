@@ -365,15 +365,10 @@ h1 {
   line-height: 1.65;
 }
 
-.response-time,
-.field-help {
+.response-time {
   color: var(--muted);
   font-size: 0.86rem;
   line-height: 1.55;
-}
-
-.field-help {
-  margin: 7px 0 0;
 }
 
 .mobile-stepper,
@@ -450,6 +445,13 @@ h1 {
   height: 18px;
   margin-top: 2px;
   accent-color: var(--coral);
+}
+
+.privacy-consent a {
+  color: var(--forest);
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .form-status {
@@ -556,6 +558,8 @@ h1 {
 
 .pricing-card {
   position: relative;
+  display: flex;
+  flex-direction: column;
   padding: 26px;
   border: 1px solid #dfe5df;
   border-radius: var(--radius);
@@ -564,6 +568,7 @@ h1 {
 
 .pricing-card .primary-button {
   width: 100%;
+  margin-top: auto;
 }
 
 .pricing-card.featured {
@@ -631,6 +636,11 @@ h1 {
   margin: 0 0 24px;
   padding-left: 18px;
   color: var(--muted);
+}
+
+.fraud-alert strong {
+  display: block;
+  margin-bottom: 6px;
 }
 
 .image-feature {

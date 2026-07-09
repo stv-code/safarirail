@@ -62,7 +62,6 @@ export const paymentMethods = [
 
 export const bookingExperience = {
   responseTimeLabel: 'Typical confirmation time: within 15-30 minutes during business hours.',
-  passportRequirement: "Kenya Railways requires the passenger's legal name and passport or national ID number to issue a ticket.",
   steps: [
     'Submit your booking request.',
     'We confirm seat availability and payment instructions.',

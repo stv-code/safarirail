@@ -64,7 +64,6 @@ import { bookingExperience, departures, formatKes, siteConfig, ticketClasses } f
   <div class="field">
     <label for="passport">Passport / ID Number</label>
     <input id="passport" name="passport" type="text" autocomplete="off" minlength="3" maxlength="80" required />
-    <p class="field-help">{bookingExperience.passportRequirement}</p>
   </div>
   <div class="field">
     <label for="gender">Gender</label>
@@ -92,9 +91,9 @@ import { bookingExperience, departures, formatKes, siteConfig, ticketClasses } f
   <div class="privacy-consent">
     <input id="privacy-consent" name="consent" type="checkbox" required />
     <label for="privacy-consent">
+      <a href={siteConfig.privacyPolicyUrl}>Privacy policy</a>.
       I consent to SafariRail storing my booking and passenger identity details only to process this request.
       Passport/ID details are retained temporarily for booking support and can be deleted on request.
-      <a href={siteConfig.privacyPolicyUrl}>Privacy policy</a>
     </label>
   </div>
   </fieldset>
