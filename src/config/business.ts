@@ -61,7 +61,7 @@ export const paymentMethods = [
 ] as const
 
 export const bookingExperience = {
-  responseTimeLabel: 'Typical confirmation time: within 15-30 minutes during business hours.',
+  responseTimeLabel: 'Typical confirmation time: within 5-10 minutes during business hours, 8am-10pm EAT.',
   steps: [
     'Submit your booking request.',
     'We confirm seat availability and payment instructions.',
