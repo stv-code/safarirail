@@ -1,4 +1,12 @@
+import { timingSafeEqual } from 'node:crypto'
+import { createRateLimiter, getClientIp } from '../rate-limit'
 import { moderateReview, type ApiResponse, type ReviewRequest, type ReviewResponse } from '../reviews.shared'
+
+const adminModerationLimiter = createRateLimiter(process.env, {
+  namespace: 'reviews:admin',
+  windowMs: 60_000,
+  maxRequests: 10,
+})
 
 function sendJson(res: ReviewResponse, statusCode: number, body: ApiResponse) {
   res.statusCode = statusCode
@@ -14,6 +22,13 @@ function getBearerToken(req: ReviewRequest) {
   return scheme?.toLowerCase() === 'bearer' ? token || '' : ''
 }
 
+function timingSafeTokenEquals(providedToken: string, expectedToken: string) {
+  const provided = Buffer.from(providedToken)
+  const expected = Buffer.from(expectedToken)
+  if (provided.length !== expected.length) return false
+  return timingSafeEqual(provided, expected)
+}
+
 export default async function handler(req: ReviewRequest, res: ReviewResponse) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST')
@@ -21,8 +36,15 @@ export default async function handler(req: ReviewRequest, res: ReviewResponse) {
     return
   }
 
+  const ip = getClientIp(req)
+  const rateLimit = await adminModerationLimiter.check(ip)
+  if (rateLimit.limited) {
+    sendJson(res, 429, { message: 'Too many moderation attempts. Please wait a minute and try again.' })
+    return
+  }
+
   const adminToken = process.env.REVIEWS_ADMIN_TOKEN
-  if (!adminToken || getBearerToken(req) !== adminToken) {
+  if (!adminToken || !timingSafeTokenEquals(getBearerToken(req), adminToken)) {
     sendJson(res, 401, { message: 'Unauthorized.' })
     return
   }

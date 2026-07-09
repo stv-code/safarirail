@@ -1,0 +1,3 @@
+export const REVIEW_NAME_MAX_LENGTH = 80
+export const REVIEW_ROUTE_MAX_LENGTH = 80
+export const REVIEW_MAX_LENGTH = 1200

@@ -1,4 +1,5 @@
 import { createCipheriv, createHash, randomBytes, randomUUID } from 'node:crypto'
+import { createRateLimiter, getClientIp } from './rate-limit'
 import {
   bookingLimits,
   calculateBookingTotal,
@@ -74,89 +75,20 @@ type BookingResponse = {
   end(body?: string): void
 }
 
-type RateLimitResult = {
-  limited: boolean
-}
-
-type RateLimiter = {
-  check(key: string): Promise<RateLimitResult>
-}
-
 type Env = NodeJS.ProcessEnv
 type Fetcher = typeof fetch
 
-class InMemoryRateLimiter implements RateLimiter {
-  private readonly requests = new Map<string, { count: number; resetAt: number }>()
-
-  async check(key: string) {
-    const now = Date.now()
-    const current = this.requests.get(key)
-
-    if (!current || current.resetAt <= now) {
-      this.requests.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS })
-      return { limited: false }
-    }
-
-    current.count += 1
-    return { limited: current.count > RATE_LIMIT_MAX_REQUESTS }
-  }
-}
-
-class UpstashRateLimiter implements RateLimiter {
-  constructor(
-    private readonly restUrl: string,
-    private readonly token: string,
-    private readonly fetcher: Fetcher = fetch,
-  ) {}
-
-  async check(key: string) {
-    const redisKey = `safarirail:bookings:${key}`
-    const increment = await this.command<number>(['INCR', redisKey])
-    if (increment === 1) {
-      await this.command<number>(['PEXPIRE', redisKey, String(RATE_LIMIT_WINDOW_MS)])
-    }
-    return { limited: increment > RATE_LIMIT_MAX_REQUESTS }
-  }
-
-  private async command<T>(command: string[]) {
-    const response = await this.fetcher(`${this.restUrl.replace(/\/$/, '')}`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${this.token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(command),
-    })
-    if (!response.ok) throw new Error(`Rate limiter failed with status ${response.status}`)
-    const payload = (await response.json()) as { result?: T; error?: string }
-    if (payload.error) throw new Error('Rate limiter command failed')
-    return payload.result as T
-  }
-}
-
-function createRateLimiter(env: Env): RateLimiter {
-  if (env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN) {
-    return new UpstashRateLimiter(env.UPSTASH_REDIS_REST_URL, env.UPSTASH_REDIS_REST_TOKEN)
-  }
-
-  return new InMemoryRateLimiter()
-}
-
-const rateLimiter = createRateLimiter(process.env)
+const rateLimiter = createRateLimiter(process.env, {
+  namespace: 'bookings',
+  windowMs: RATE_LIMIT_WINDOW_MS,
+  maxRequests: RATE_LIMIT_MAX_REQUESTS,
+})
 
 function sendJson(res: BookingResponse, statusCode: number, body: ApiResponse) {
   res.statusCode = statusCode
   res.setHeader('Content-Type', 'application/json; charset=utf-8')
   res.setHeader('Cache-Control', 'no-store')
   res.end(JSON.stringify(body))
-}
-
-function getClientIp(req: BookingRequest) {
-  const forwardedFor = req.headers['x-forwarded-for']
-  if (typeof forwardedFor === 'string' && forwardedFor.trim()) {
-    return forwardedFor.split(',')[0].trim()
-  }
-  return req.socket?.remoteAddress || 'unknown'
 }
 
 function cleanText(value: unknown, maxLength: number) {

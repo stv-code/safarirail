@@ -1,6 +1,5 @@
-export const REVIEW_NAME_MAX_LENGTH = 80
-export const REVIEW_ROUTE_MAX_LENGTH = 80
-export const REVIEW_MAX_LENGTH = 1200
+import { REVIEW_MAX_LENGTH, REVIEW_NAME_MAX_LENGTH, REVIEW_ROUTE_MAX_LENGTH } from '../src/config/reviews'
+
 const SPAM_PATTERN = /(https?:\/\/|www\.|<a\s|<\/a>|casino|viagra|crypto\s+airdrop)/i
 
 type Env = NodeJS.ProcessEnv
@@ -22,7 +21,6 @@ export type ReviewResponse = {
 }
 
 export type PublicReview = {
-  id: string
   name: string
   rating: number
   route: string
@@ -57,6 +55,10 @@ type ModerationPayload = {
 }
 
 type ModerationStatus = 'approved' | 'rejected'
+type ExistingReview = {
+  id: string
+  status: 'pending' | 'approved' | 'rejected'
+}
 
 type ValidationResult<T> = { ok: true; value: T } | { ok: false; errors: string[] }
 
@@ -169,7 +171,7 @@ export async function submitReview(payload: ReviewPayload, env: Env = process.en
 export async function listApprovedReviews(env: Env = process.env, fetcher: Fetcher = fetch) {
   const { baseUrl, serviceRoleKey } = getSupabaseConfig(env)
   const query = new URLSearchParams({
-    select: 'id,name,rating,route,review_text,created_at',
+    select: 'name,rating,route,review_text,created_at',
     status: 'eq.approved',
     order: 'created_at.desc',
     limit: '24',
@@ -181,7 +183,6 @@ export async function listApprovedReviews(env: Env = process.env, fetcher: Fetch
 
   if (!response.ok) throw new Error(`Supabase review list failed: ${response.status}`)
   const rows = (await response.json()) as Array<{
-    id: string
     name: string
     rating: number
     route: string
@@ -190,7 +191,6 @@ export async function listApprovedReviews(env: Env = process.env, fetcher: Fetch
   }>
 
   return rows.map((row) => ({
-    id: row.id,
     name: row.name,
     rating: row.rating,
     route: row.route,
@@ -199,16 +199,63 @@ export async function listApprovedReviews(env: Env = process.env, fetcher: Fetch
   }))
 }
 
+async function getReviewForModeration(id: string, baseUrl: string, serviceRoleKey: string, fetcher: Fetcher) {
+  const query = new URLSearchParams({
+    select: 'id,status',
+    id: `eq.${id}`,
+    limit: '1',
+  })
+  const response = await fetcher(`${baseUrl}/rest/v1/reviews?${query.toString()}`, {
+    method: 'GET',
+    headers: supabaseHeaders(serviceRoleKey),
+  })
+
+  if (!response.ok) throw new Error(`Supabase review lookup failed: ${response.status}`)
+  const rows = (await response.json()) as ExistingReview[]
+  return rows[0] || null
+}
+
+async function recordModerationEvent(
+  review: ExistingReview,
+  newStatus: ModerationStatus,
+  actor: string,
+  baseUrl: string,
+  serviceRoleKey: string,
+  fetcher: Fetcher,
+) {
+  const response = await fetcher(`${baseUrl}/rest/v1/review_moderation_events`, {
+    method: 'POST',
+    headers: {
+      ...supabaseHeaders(serviceRoleKey),
+      Prefer: 'return=minimal',
+    },
+    body: JSON.stringify({
+      review_id: review.id,
+      action: newStatus,
+      previous_status: review.status,
+      new_status: newStatus,
+      actor,
+    }),
+  })
+
+  if (!response.ok) throw new Error(`Supabase review moderation audit failed: ${response.status}`)
+}
+
 export async function moderateReview(payload: ModerationPayload, env: Env = process.env, fetcher: Fetcher = fetch): Promise<ValidationResult<{ id: string; status: ModerationStatus }>> {
   const validation = validateModerationPayload(payload)
   if (!validation.ok) return validation
 
   const { baseUrl, serviceRoleKey } = getSupabaseConfig(env)
+  const existingReview = await getReviewForModeration(validation.value.id, baseUrl, serviceRoleKey, fetcher)
+  if (!existingReview) {
+    return { ok: false, errors: ['Review not found.'] }
+  }
+
   const response = await fetcher(`${baseUrl}/rest/v1/reviews?id=eq.${encodeURIComponent(validation.value.id)}`, {
     method: 'PATCH',
     headers: {
       ...supabaseHeaders(serviceRoleKey),
-      Prefer: 'return=minimal',
+      Prefer: 'return=representation',
     },
     body: JSON.stringify({
       status: validation.value.status,
@@ -217,5 +264,13 @@ export async function moderateReview(payload: ModerationPayload, env: Env = proc
   })
 
   if (!response.ok) throw new Error(`Supabase review moderation failed: ${response.status}`)
+  const updatedRows = (await response.json()) as Array<{ id: string }>
+  if (updatedRows.length !== 1) {
+    return { ok: false, errors: ['Review not found.'] }
+  }
+
+  await recordModerationEvent(existingReview, validation.value.status, 'admin-token', baseUrl, serviceRoleKey, fetcher)
   return validation
 }
+
+export { REVIEW_MAX_LENGTH, REVIEW_NAME_MAX_LENGTH, REVIEW_ROUTE_MAX_LENGTH }

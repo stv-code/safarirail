@@ -80,9 +80,9 @@ describe('review persistence', () => {
   it('lists only approved reviews', async () => {
     const fetcher = vi.fn(async (input: RequestInfo | URL) => {
       expect(String(input)).toContain('status=eq.approved')
+      expect(String(input)).not.toContain('id%2C')
       return new Response(JSON.stringify([
         {
-          id: '8ad4a700-07a5-4a22-a4d5-111111111111',
           name: 'Amina',
           rating: 5,
           route: 'Nairobi to Mombasa',
@@ -96,6 +96,7 @@ describe('review persistence', () => {
 
     expect(reviews).toHaveLength(1)
     expect(reviews[0]?.reviewText).toBe('Excellent support.')
+    expect(reviews[0]).not.toHaveProperty('id')
   })
 })
 
@@ -112,7 +113,24 @@ describe('review moderation', () => {
   })
 
   it('approves reviews through the moderation API helper', async () => {
-    const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(null, { status: 204 }))
+    const fetcher = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (init?.method === 'GET' && url.includes('/rest/v1/reviews?')) {
+        return new Response(JSON.stringify([
+          {
+            id: '8ad4a700-07a5-4a22-a4d5-111111111111',
+            status: 'pending',
+          },
+        ]), { status: 200 })
+      }
+      if (init?.method === 'PATCH') {
+        return new Response(JSON.stringify([{ id: '8ad4a700-07a5-4a22-a4d5-111111111111' }]), { status: 200 })
+      }
+      if (init?.method === 'POST' && url.includes('/rest/v1/review_moderation_events')) {
+        return new Response(null, { status: 201 })
+      }
+      return new Response(null, { status: 500 })
+    })
 
     const result = await moderateReview(
       {
@@ -124,9 +142,38 @@ describe('review moderation', () => {
     )
 
     expect(result.ok).toBe(true)
-    const request = fetcher.mock.calls[0]?.[1]
-    const body = JSON.parse(String(request?.body)) as { status: string; approved_at: string | null }
+    const patchRequest = fetcher.mock.calls.find((call) => call[1]?.method === 'PATCH')?.[1]
+    const body = JSON.parse(String(patchRequest?.body)) as { status: string; approved_at: string | null }
     expect(body.status).toBe('approved')
     expect(typeof body.approved_at).toBe('string')
+
+    const auditRequest = fetcher.mock.calls.find((call) => String(call[0]).includes('review_moderation_events'))?.[1]
+    const auditBody = JSON.parse(String(auditRequest?.body)) as {
+      action: string
+      previous_status: string
+      new_status: string
+      actor: string
+    }
+    expect(auditBody.action).toBe('approved')
+    expect(auditBody.previous_status).toBe('pending')
+    expect(auditBody.new_status).toBe('approved')
+    expect(auditBody.actor).toBe('admin-token')
+  })
+
+  it('returns a validation error when a review does not exist', async () => {
+    const fetcher = vi.fn(async () => new Response(JSON.stringify([]), { status: 200 }))
+
+    const result = await moderateReview(
+      {
+        id: '8ad4a700-07a5-4a22-a4d5-111111111111',
+        status: 'rejected',
+      },
+      env,
+      fetcher,
+    )
+
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.errors).toContain('Review not found.')
   })
 })

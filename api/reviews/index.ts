@@ -8,6 +8,13 @@ import {
   type ReviewRequest,
   type ReviewResponse,
 } from '../reviews.shared'
+import { createRateLimiter, getClientIp } from '../rate-limit'
+
+const reviewSubmitLimiter = createRateLimiter(process.env, {
+  namespace: 'reviews:submit',
+  windowMs: 60_000,
+  maxRequests: 3,
+})
 
 function sendJson(res: ReviewResponse, statusCode: number, body: ApiResponse) {
   res.statusCode = statusCode
@@ -25,6 +32,13 @@ export default async function handler(req: ReviewRequest, res: ReviewResponse) {
     }
 
     if (req.method === 'POST') {
+      const ip = getClientIp(req)
+      const rateLimit = await reviewSubmitLimiter.check(ip)
+      if (rateLimit.limited) {
+        sendJson(res, 429, { message: 'Too many review submissions. Please wait a minute and try again.' })
+        return
+      }
+
       const payload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body
       const result = await submitReview(payload || {})
 
