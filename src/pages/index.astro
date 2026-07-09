@@ -3,12 +3,12 @@ import BaseLayout from '../layouts/BaseLayout.astro'
 import Header from '../components/Header.astro'
 import BookingPanel from '../components/BookingPanel.astro'
 import Footer from '../components/Footer.astro'
-import { formatKes, paymentMethods, siteConfig, ticketClasses, whatsappBaseUrl } from '../config/business'
+import { bookingExperience, formatKes, paymentMethods, siteConfig, ticketClasses, whatsappBaseUrl } from '../config/business'
 
 const infoStrip = [
-  'Third-party booking agency - not affiliated with Kenya Railways Corporation',
+  'Independent booking assistance for travellers without M-Pesa',
+  bookingExperience.responseTimeLabel,
   'Tickets delivered via Email, WhatsApp or Telegram',
-  'Wise, Remitly, Sendwave, Western Union, and Crypto accepted',
 ]
 
 const faqs = [
@@ -31,14 +31,31 @@ const faqs = [
           The hassle-free way for tourists to book SGR tickets. No M-Pesa? No Kenyan bank account? No problem.
         </p>
         <p class="hero-caveat">
-          Not comfortable with third parties? We encourage you to book directly at the station.
+          Independent third-party assistance. Prefer to book directly? Use the official KRC site.
         </p>
         <div class="hero-actions">
-          <a class="primary-button" href="#pricing">Start Booking</a>
-          <a class="ghost-button" href={siteConfig.officialKrcBookingUrl} target="_blank" rel="noopener noreferrer">Official KRC Site</a>
+          <a class="primary-button" href="#pricing">View Prices</a>
+          <a class="ghost-button" href="#how-it-works">How It Works</a>
         </div>
       </div>
       <div class="hero-bottom" id="booking">
+        <section class="booking-flow" id="how-it-works" aria-labelledby="how-it-works-title">
+          <div class="section-heading compact-flow-heading">
+            <p class="eyebrow">How It Works</p>
+            <div>
+              <h2 id="how-it-works-title">Request first. Pay after we confirm.</h2>
+              <p>{bookingExperience.responseTimeLabel}</p>
+            </div>
+          </div>
+          <div class="process-grid">
+            {bookingExperience.steps.map((step, index) => (
+              <article>
+                <span>{index + 1}</span>
+                <p>{step}</p>
+              </article>
+            ))}
+          </div>
+        </section>
         <BookingPanel />
       </div>
     </section>
@@ -71,7 +88,7 @@ const faqs = [
             <ul>
               {tier.features.map((feature) => <li>{feature}</li>)}
             </ul>
-            <a class="primary-button" href="#booking">Select {tier.label}</a>
+            <button class="primary-button pricing-select" type="button" data-ticket-class={tier.label}>Submit Booking Request</button>
           </article>
         ))}
       </div>
@@ -102,10 +119,6 @@ const faqs = [
             <p>{detail}</p>
           </article>
         ))}
-      </div>
-      <div class="payment-actions">
-        <a class="primary-button" href={`${whatsappBaseUrl}?text=Hi%20SafariRail%2C%20I%20have%20made%20a%20payment%20for%20my%20booking.%20Please%20confirm%20receipt.%20Thank%20you!`} target="_blank" rel="noopener noreferrer">Confirm via WhatsApp</a>
-        <a class="ghost-dark-button" href={`mailto:${siteConfig.supportEmail}?subject=SafariRail%20Booking%20Payment%20Confirmation&body=Booking%20Details%3A%0A%0AName%3A%0AClass%3A%0ADate%3A%0APassengers%3A%0APayment%20Method%3A%0A%0APlease%20confirm%20receipt.%20Thank%20you.`}>Confirm via Email</a>
       </div>
     </section>
 
@@ -174,7 +187,7 @@ const faqs = [
         <p class="eyebrow">Booking Confirmed?</p>
         <h2>Your M-Pesa ticket message will be sent after payment is confirmed.</h2>
       </div>
-      <a class="primary-button" href="#booking">Start Booking</a>
+      <a class="primary-button" href="#booking">Submit Booking Request</a>
     </section>
   </main>
   <Footer />
@@ -195,5 +208,19 @@ const faqs = [
     const body = [`Name: ${name}`, `Email: ${email}`, '', String(message)].join('\n')
 
     window.location.href = `mailto:${supportEmail}?subject=SafariRail%20Message&body=${encodeURIComponent(body)}`
+  })
+
+  document.querySelectorAll('.pricing-select').forEach((button) => {
+    button.addEventListener('click', () => {
+      if (!(button instanceof HTMLElement)) return
+      const selectedClass = button.dataset.ticketClass
+      const classInput = document.querySelector('#class')
+      const bookingForm = document.querySelector('#booking-panel')
+      if (selectedClass && classInput instanceof HTMLSelectElement) {
+        classInput.value = selectedClass
+        classInput.dispatchEvent(new Event('change', { bubbles: true }))
+      }
+      bookingForm?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
   })
 </script>

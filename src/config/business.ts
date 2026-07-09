@@ -60,6 +60,16 @@ export const paymentMethods = [
   { method: 'Crypto (USDT/BTC/BNB)', detail: 'WhatsApp for wallet address' },
 ] as const
 
+export const bookingExperience = {
+  responseTimeLabel: 'Typical confirmation time: within 15-30 minutes during business hours.',
+  passportRequirement: "Kenya Railways requires the passenger's legal name and passport or national ID number to issue a ticket.",
+  steps: [
+    'Submit your booking request.',
+    'We confirm seat availability and payment instructions.',
+    'Receive your booking reference and continue on WhatsApp for final confirmation.',
+  ],
+} as const
+
 export const bookingLimits = {
   minAdults: 1,
   maxAdults: 6,

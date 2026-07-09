@@ -1,6 +1,6 @@
 ---
 import countries from '@/data/countries.json'
-import { departures, formatKes, siteConfig, ticketClasses } from '@/config/business'
+import { bookingExperience, departures, formatKes, siteConfig, ticketClasses } from '@/config/business'
 ---
 
 <form class="booking-panel booking-panel-full" id="booking-panel">
@@ -8,10 +8,19 @@ import { departures, formatKes, siteConfig, ticketClasses } from '@/config/busin
     <p class="eyebrow">Passenger Details</p>
     <h2>Request SGR booking assistance</h2>
     <p>
-      Ticket message sent to your email/WhatsApp after payment confirmation. You must print it at the station.
+      Submit your details first. We confirm seat availability and payment instructions before final confirmation.
     </p>
+    <p class="response-time">{bookingExperience.responseTimeLabel}</p>
+    <div class="mobile-stepper" aria-label="Booking form progress">
+      <span data-step-indicator="0">Trip</span>
+      <span data-step-indicator="1">Passengers</span>
+      <span data-step-indicator="2">Contact Details</span>
+      <span data-step-indicator="3">Review & Submit</span>
+    </div>
   </div>
 
+  <fieldset class="form-step" data-step="0">
+    <legend>Trip</legend>
   <div class="field">
     <label for="class">Class</label>
     <select id="class" name="class">
@@ -44,6 +53,10 @@ import { departures, formatKes, siteConfig, ticketClasses } from '@/config/busin
       {[0, 1, 2, 3, 4].map((number) => <option value={number}>{number}</option>)}
     </select>
   </div>
+  </fieldset>
+
+  <fieldset class="form-step" data-step="1">
+    <legend>Passengers</legend>
   <div class="field">
     <label for="name">Full Name (as per Passport)</label>
     <input id="name" name="name" type="text" autocomplete="name" minlength="2" maxlength="120" placeholder="e.g. John Michael Smith" required />
@@ -51,6 +64,7 @@ import { departures, formatKes, siteConfig, ticketClasses } from '@/config/busin
   <div class="field">
     <label for="passport">Passport / ID Number</label>
     <input id="passport" name="passport" type="text" autocomplete="off" minlength="3" maxlength="80" required />
+    <p class="field-help">{bookingExperience.passportRequirement}</p>
   </div>
   <div class="field">
     <label for="gender">Gender</label>
@@ -67,6 +81,10 @@ import { departures, formatKes, siteConfig, ticketClasses } from '@/config/busin
       {countries.map((country) => <option value={country['alpha-2']}>{country.name}</option>)}
     </select>
   </div>
+  </fieldset>
+
+  <fieldset class="form-step" data-step="2">
+    <legend>Contact Details</legend>
   <div class="field">
     <label for="email">Email Address</label>
     <input id="email" name="email" type="email" autocomplete="email" placeholder="tickets@example.com" required />
@@ -79,14 +97,35 @@ import { departures, formatKes, siteConfig, ticketClasses } from '@/config/busin
       <a href={siteConfig.privacyPolicyUrl}>Privacy policy</a>
     </label>
   </div>
+  </fieldset>
+
+  <fieldset class="form-step review-step" data-step="3">
+    <legend>Review & Submit</legend>
   <p class="form-status" id="booking-status" role="status" aria-live="polite"></p>
   <div class="booking-total">
     <span>Estimated Total</span>
     <strong id="booking-total">KES 2,000</strong>
     <small>Children under 3 travel free.</small>
   </div>
-  <button class="primary-button" type="submit">Submit Secure Booking Request</button>
+  <button class="primary-button" type="submit">Submit Booking Request</button>
+  </fieldset>
+
+  <div class="mobile-form-actions">
+    <button class="ghost-dark-button" type="button" id="booking-prev">Back</button>
+    <button class="primary-button" type="button" id="booking-next">Next</button>
+  </div>
 </form>
+
+<section class="booking-success" id="booking-success" hidden aria-live="polite">
+  <p class="eyebrow">Request Submitted</p>
+  <h2>Booking request received</h2>
+  <p>Your reference is:</p>
+  <strong id="booking-reference"></strong>
+  <p>
+    We will confirm seat availability and payment instructions next. Continue on WhatsApp with your reference for final confirmation.
+  </p>
+  <a class="primary-button" id="booking-whatsapp" href="#" target="_blank" rel="noopener noreferrer">Continue on WhatsApp</a>
+</section>
 
 <script>
   const form = document.querySelector('#booking-panel')
@@ -97,6 +136,14 @@ import { departures, formatKes, siteConfig, ticketClasses } from '@/config/busin
   const totalOutput = document.querySelector('#booking-total')
   const statusOutput = document.querySelector('#booking-status')
   const submitButton = form?.querySelector('button[type="submit"]')
+  const successPanel = document.querySelector('#booking-success')
+  const bookingReference = document.querySelector('#booking-reference')
+  const whatsappLink = document.querySelector('#booking-whatsapp')
+  const prevButton = document.querySelector('#booking-prev')
+  const nextButton = document.querySelector('#booking-next')
+  const stepElements = Array.from(document.querySelectorAll('[data-step]'))
+  const stepIndicators = Array.from(document.querySelectorAll('[data-step-indicator]'))
+  let currentStep = 0
 
   function getSelectedClass() {
     if (!(classInput instanceof HTMLSelectElement)) return null
@@ -120,6 +167,34 @@ import { departures, formatKes, siteConfig, ticketClasses } from '@/config/busin
     totalOutput.textContent = `KES ${calculateTotal().toLocaleString()}`
   }
 
+  function setCurrentStep(nextStep: number) {
+    currentStep = Math.max(0, Math.min(nextStep, stepElements.length - 1))
+    stepElements.forEach((stepElement) => {
+      if (!(stepElement instanceof HTMLElement)) return
+      stepElement.dataset.active = String(stepElement.dataset.step === String(currentStep))
+    })
+    stepIndicators.forEach((indicator) => {
+      if (!(indicator instanceof HTMLElement)) return
+      indicator.dataset.active = String(indicator.dataset.stepIndicator === String(currentStep))
+    })
+    if (prevButton instanceof HTMLButtonElement) prevButton.disabled = currentStep === 0
+    if (nextButton instanceof HTMLButtonElement) {
+      nextButton.hidden = currentStep === stepElements.length - 1
+    }
+  }
+
+  function validateCurrentStep() {
+    const currentStepElement = stepElements[currentStep]
+    if (!(currentStepElement instanceof HTMLElement)) return true
+    const controls = Array.from(currentStepElement.querySelectorAll('input, select, textarea'))
+    for (const control of controls) {
+      if (control instanceof HTMLInputElement || control instanceof HTMLSelectElement || control instanceof HTMLTextAreaElement) {
+        if (!control.reportValidity()) return false
+      }
+    }
+    return true
+  }
+
   function setStatus(message: string, isError = false) {
     if (!(statusOutput instanceof HTMLElement)) return
     statusOutput.textContent = message
@@ -140,6 +215,13 @@ import { departures, formatKes, siteConfig, ticketClasses } from '@/config/busin
   adultsInput?.addEventListener('change', updateTotal)
   childrenInput?.addEventListener('change', updateTotal)
   updateTotal()
+  setCurrentStep(0)
+
+  prevButton?.addEventListener('click', () => setCurrentStep(currentStep - 1))
+  nextButton?.addEventListener('click', () => {
+    if (!validateCurrentStep()) return
+    setCurrentStep(currentStep + 1)
+  })
 
   form?.addEventListener('submit', async (event) => {
     event.preventDefault()
@@ -182,16 +264,19 @@ import { departures, formatKes, siteConfig, ticketClasses } from '@/config/busin
         throw new Error(`${result.message || 'Submission failed.'}${details}`)
       }
 
-      setStatus(`Booking request ${result.bookingReference} recorded securely. Opening WhatsApp with your reference only.`)
-      if (typeof result.whatsappUrl === 'string') {
-        window.open(result.whatsappUrl, '_blank', 'noopener,noreferrer')
+      form.hidden = true
+      if (successPanel instanceof HTMLElement) successPanel.hidden = false
+      if (bookingReference instanceof HTMLElement) bookingReference.textContent = result.bookingReference || ''
+      if (whatsappLink instanceof HTMLAnchorElement && typeof result.whatsappUrl === 'string') {
+        whatsappLink.href = result.whatsappUrl
       }
+      successPanel?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'We could not submit your booking right now. Please try again.', true)
     } finally {
       if (submitButton instanceof HTMLButtonElement) {
         submitButton.disabled = false
-        submitButton.textContent = 'Submit Secure Booking Request'
+        submitButton.textContent = 'Submit Booking Request'
       }
     }
   })

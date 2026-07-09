@@ -1,5 +1,6 @@
 ---
 const links = [
+  { href: '/#how-it-works', label: 'How It Works' },
   { href: '/#pricing', label: 'Classes' },
   { href: '/reviews', label: 'Reviews' },
   { href: '/#faq', label: 'FAQ' },
@@ -9,9 +10,7 @@ const links = [
 
 <div class="disclaimer-ticker" role="note" aria-label="Important disclaimer">
   <div class="ticker-track">
-    <span>SafariRail is not the official Kenya Railways website. We are an independent third-party booking assistance service.</span>
-    <span>SafariRail is not the official Kenya Railways website. We are an independent third-party booking assistance service.</span>
-    <span>SafariRail is not the official Kenya Railways website. We are an independent third-party booking assistance service.</span>
+    <span>Independent third-party booking assistance. Official KRC booking remains available at metickets.krc.co.ke.</span>
   </div>
 </div>
 
@@ -28,8 +27,8 @@ const links = [
     {links.map((link) => <a href={link.href}>{link.label}</a>)}
   </nav>
 
-  <a class="header-action" href="#pricing">
-    Book Now
+  <a class="header-action" href="/#booking">
+    Book
   </a>
 </header>
 
