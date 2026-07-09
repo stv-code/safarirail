@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro'
 import Header from '../components/Header.astro'
 import Footer from '../components/Footer.astro'
+import { REVIEW_MAX_LENGTH, REVIEW_NAME_MAX_LENGTH, REVIEW_ROUTE_MAX_LENGTH } from '../../api/reviews'
 ---
 
 <BaseLayout
@@ -18,15 +19,158 @@ import Footer from '../components/Footer.astro'
       </div>
     </section>
 
-    <section class="section reviews-empty">
-      <p class="eyebrow">Recent Feedback</p>
-      <h2>What Travellers Say</h2>
-      <p>
-        Reviews are checked before going live. For immediate booking help, contact SafariRail by WhatsApp or email.
-      </p>
-      <a class="primary-button" href="https://wa.me/254769869503" target="_blank" rel="noopener noreferrer">Message WhatsApp</a>
+    <section class="section reviews-section">
+      <div class="section-heading">
+        <p class="eyebrow">Recent Feedback</p>
+        <div>
+          <h2>What Travellers Say</h2>
+          <p>Approved traveller reviews appear here after moderation.</p>
+        </div>
+      </div>
+      <div class="reviews-list" id="reviews-list" aria-live="polite">
+        <p class="reviews-empty">Loading approved reviews...</p>
+      </div>
+    </section>
+
+    <section class="section review-submit-section">
+      <div class="section-heading">
+        <p class="eyebrow">Share Your Experience</p>
+        <div>
+          <h2>Submit a Review</h2>
+          <p>Your review will appear publicly only after approval.</p>
+        </div>
+      </div>
+      <form class="review-form" id="review-form">
+        <div class="field">
+          <label for="review-name">Name</label>
+          <input id="review-name" name="name" type="text" maxlength={REVIEW_NAME_MAX_LENGTH} required />
+        </div>
+        <div class="field">
+          <label for="review-rating">Rating</label>
+          <select id="review-rating" name="rating" required>
+            <option value="">Select</option>
+            <option value="5">5 - Excellent</option>
+            <option value="4">4 - Good</option>
+            <option value="3">3 - Okay</option>
+            <option value="2">2 - Poor</option>
+            <option value="1">1 - Very poor</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="review-route">Route</label>
+          <input id="review-route" name="route" type="text" maxlength={REVIEW_ROUTE_MAX_LENGTH} placeholder="Nairobi to Mombasa" />
+        </div>
+        <div class="field review-text-field">
+          <label for="review-text">Review</label>
+          <textarea id="review-text" name="reviewText" maxlength={REVIEW_MAX_LENGTH} required placeholder="Tell other travellers about your booking experience."></textarea>
+        </div>
+        <div class="review-honeypot" aria-hidden="true">
+          <label for="review-website">Website</label>
+          <input id="review-website" name="website" type="text" tabindex="-1" autocomplete="off" />
+        </div>
+        <p class="form-status" id="review-status" role="status" aria-live="polite"></p>
+        <button class="primary-button" type="submit">Submit Review</button>
+      </form>
     </section>
   </main>
   <Footer />
 </BaseLayout>
 
+<script>
+  const reviewsList = document.querySelector('#reviews-list')
+  const reviewForm = document.querySelector('#review-form')
+  const reviewStatus = document.querySelector('#review-status')
+  const reviewSubmitButton = reviewForm?.querySelector('button[type="submit"]')
+
+  function setReviewStatus(message: string, isError = false) {
+    if (!(reviewStatus instanceof HTMLElement)) return
+    reviewStatus.textContent = message
+    reviewStatus.dataset.status = isError ? 'error' : 'success'
+  }
+
+  function escapeHtml(value: unknown) {
+    return String(value)
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;')
+  }
+
+  function renderReviews(reviews: Array<{ name: string; rating: number; route: string; reviewText: string }>) {
+    if (!(reviewsList instanceof HTMLElement)) return
+    if (reviews.length === 0) {
+      reviewsList.innerHTML = '<p class="reviews-empty">No approved reviews yet. Be the first to share your experience.</p>'
+      return
+    }
+
+    reviewsList.innerHTML = reviews.map((review) => `
+      <article class="review-card">
+        <div class="review-card-header">
+          <h3>${escapeHtml(review.name)}</h3>
+          <span aria-label="${review.rating} out of 5 stars">${'★'.repeat(review.rating)}${'☆'.repeat(5 - review.rating)}</span>
+        </div>
+        <p class="review-route">${escapeHtml(review.route)}</p>
+        <p>${escapeHtml(review.reviewText)}</p>
+      </article>
+    `).join('')
+  }
+
+  async function loadReviews() {
+    try {
+      const response = await fetch('/api/reviews')
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.message || 'Could not load reviews.')
+      renderReviews(Array.isArray(result.reviews) ? result.reviews : [])
+    } catch {
+      if (reviewsList instanceof HTMLElement) {
+        reviewsList.innerHTML = '<p class="reviews-empty">Approved reviews are unavailable right now.</p>'
+      }
+    }
+  }
+
+  reviewForm?.addEventListener('submit', async (event) => {
+    event.preventDefault()
+    if (!(reviewForm instanceof HTMLFormElement)) return
+    if (!reviewForm.reportValidity()) return
+
+    const data = new FormData(reviewForm)
+    const payload = {
+      name: data.get('name'),
+      rating: Number(data.get('rating') || 0),
+      route: data.get('route'),
+      reviewText: data.get('reviewText'),
+      website: data.get('website'),
+    }
+
+    if (reviewSubmitButton instanceof HTMLButtonElement) {
+      reviewSubmitButton.disabled = true
+      reviewSubmitButton.textContent = 'Submitting...'
+    }
+    setReviewStatus('Submitting your review...')
+
+    try {
+      const response = await fetch('/api/reviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      const result = await response.json()
+      if (!response.ok) {
+        const details = Array.isArray(result.errors) ? ` ${result.errors.join(' ')}` : ''
+        throw new Error(`${result.message || 'Review submission failed.'}${details}`)
+      }
+      reviewForm.reset()
+      setReviewStatus('Thank you. Your review has been submitted and will appear after approval.')
+    } catch (error) {
+      setReviewStatus(error instanceof Error ? error.message : 'We could not submit your review right now.', true)
+    } finally {
+      if (reviewSubmitButton instanceof HTMLButtonElement) {
+        reviewSubmitButton.disabled = false
+        reviewSubmitButton.textContent = 'Submit Review'
+      }
+    }
+  })
+
+  loadReviews()
+</script>
