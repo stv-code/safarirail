@@ -27,7 +27,7 @@ html.modal-open body {
 
 body {
   margin: 0;
-  font-family: Inter, system-ui, sans-serif;
+  font-family: Manrope, system-ui, sans-serif;
   background: var(--cream);
   color: var(--ink);
 }
@@ -250,7 +250,7 @@ p {
 
 h1,
 h2 {
-  font-family: Fraunces, Georgia, serif;
+  font-family: 'DM Serif Display', Georgia, serif;
   letter-spacing: 0;
 }
 
@@ -354,7 +354,7 @@ h1 {
 .booking-summary h2 {
   margin-bottom: 8px;
   color: var(--forest);
-  font-family: Fraunces, Georgia, serif;
+  font-family: 'DM Serif Display', Georgia, serif;
   font-size: clamp(1.8rem, 3vw, 2.7rem);
 }
 
@@ -596,7 +596,7 @@ h1 {
 }
 
 .price {
-  font-family: Fraunces, Georgia, serif;
+  font-family: 'DM Serif Display', Georgia, serif;
   color: var(--forest);
   font-size: 3rem;
   font-weight: 700;
@@ -604,7 +604,7 @@ h1 {
 
 .price sup {
   margin-right: 4px;
-  font-family: Inter, system-ui, sans-serif;
+  font-family: Manrope, system-ui, sans-serif;
   font-size: 0.8rem;
 }
 
@@ -902,7 +902,7 @@ h1 {
 .legal-content h2 {
   margin: 42px 0 12px;
   color: var(--forest);
-  font-family: Fraunces, Georgia, serif;
+  font-family: 'DM Serif Display', Georgia, serif;
   font-size: clamp(1.45rem, 3vw, 2rem);
   line-height: 1.15;
 }
@@ -1195,7 +1195,7 @@ h1 {
     display: block;
     margin-bottom: 2px;
     color: var(--forest);
-    font-family: Fraunces, Georgia, serif;
+    font-family: 'DM Serif Display', Georgia, serif;
     font-size: 1.35rem;
     font-weight: 700;
   }
