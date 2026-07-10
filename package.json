@@ -16,5 +16,8 @@
     "astro": "^7.0.7",
     "typescript": "^5",
     "vitest": "^4.1.10"
+  },
+  "dependencies": {
+    "@astrojs/vercel": "^11.0.2"
   }
 }
