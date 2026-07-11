@@ -1,0 +1,36 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro'
+import Header from '@/components/Header.astro'
+import Footer from '@/components/Footer.astro'
+import { siteConfig, whatsappBaseUrl } from '@/config/business'
+
+const title = 'Booking Confirmed | SafariRail'
+const description = 'Your SafariRail-assisted SGR booking and purchase have been confirmed.'
+---
+
+<BaseLayout title={title} description={description} canonical={`${siteConfig.url}/booking-confirmed`} robots="noindex, nofollow">
+  <main>
+    <section class="status-hero status-hero-confirmed">
+      <Header />
+      <div class="status-hero-content">
+        <p class="eyebrow">Purchase complete</p>
+        <h1>Your SGR booking is confirmed.</h1>
+        <p>Payment has been received and your SafariRail-assisted booking has been completed.</p>
+      </div>
+    </section>
+
+    <section class="status-section status-section-centered">
+      <div class="status-panel">
+        <div class="status-mark" aria-hidden="true">OK</div>
+        <p class="eyebrow">Booking confirmed</p>
+        <h2>Thank you for choosing SafariRail.</h2>
+        <p>Keep the ticket details sent to you by SafariRail. Use the M-Pesa message and ticket number to print your physical ticket at the station before boarding.</p>
+        <div class="status-actions">
+          <a class="primary-button" href={whatsappBaseUrl} target="_blank" rel="noopener noreferrer">Contact Support</a>
+          <a class="ghost-dark-button" href="/">Return Home</a>
+        </div>
+      </div>
+    </section>
+  </main>
+  <Footer />
+</BaseLayout>

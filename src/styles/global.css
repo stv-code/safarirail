@@ -1223,3 +1223,163 @@ h1 {
     width: 100%;
   }
 }
+
+.status-hero {
+  min-height: 500px;
+  padding: 24px clamp(18px, 4vw, 56px) 72px;
+  display: flex;
+  flex-direction: column;
+  color: var(--white);
+  background:
+    linear-gradient(90deg, rgba(16, 37, 33, 0.92), rgba(16, 37, 33, 0.34)),
+    url('/hero-rail.jpg') center / cover;
+}
+
+.status-hero-confirmed {
+  background:
+    linear-gradient(90deg, rgba(16, 37, 33, 0.9), rgba(16, 37, 33, 0.28)),
+    url('/feature-wildlife.jpg') center / cover;
+}
+
+.status-hero-content {
+  width: min(1180px, 100%);
+  margin: auto auto 0;
+}
+
+.status-hero-content h1 {
+  max-width: 900px;
+  margin-bottom: 18px;
+  font-size: clamp(3rem, 7vw, 6rem);
+}
+
+.status-hero-content > p:last-child {
+  max-width: 700px;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 1.08rem;
+  line-height: 1.7;
+}
+
+.status-section {
+  width: min(1000px, calc(100% - 36px));
+  margin: 0 auto;
+  padding: clamp(56px, 8vw, 96px) 0;
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 18px;
+  align-items: start;
+}
+
+.status-section-centered {
+  max-width: 720px;
+  grid-template-columns: 1fr;
+}
+
+.status-panel,
+.status-steps {
+  border: 1px solid #dfe5df;
+  border-radius: var(--radius);
+  background: var(--white);
+}
+
+.status-panel {
+  padding: clamp(26px, 5vw, 48px);
+}
+
+.status-mark {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 24px;
+  border-radius: 50%;
+  background: var(--leaf);
+  color: var(--white);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.status-panel h2 {
+  margin: 22px 0 12px;
+  color: var(--forest);
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1;
+}
+
+.status-panel > p:not(.eyebrow) {
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.status-reference {
+  display: block;
+  overflow-wrap: anywhere;
+  color: var(--forest);
+  font-size: clamp(1.15rem, 3vw, 1.55rem);
+}
+
+.status-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 26px;
+}
+
+.status-steps {
+  padding: 12px 24px;
+}
+
+.status-steps article {
+  min-height: 118px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 16px;
+  align-items: center;
+  border-bottom: 1px solid #e4e9e5;
+}
+
+.status-steps article:last-child {
+  border-bottom: 0;
+}
+
+.status-steps span {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--mist);
+  color: var(--forest);
+  font-weight: 800;
+}
+
+.status-steps h3 {
+  margin: 0 0 6px;
+  color: var(--forest);
+}
+
+.status-steps p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+@media (max-width: 760px) {
+  .status-section {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .status-hero {
+    min-height: 440px;
+    padding-inline: 16px;
+  }
+
+  .status-actions {
+    display: grid;
+  }
+
+  .status-actions a {
+    width: 100%;
+  }
+}

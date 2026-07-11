@@ -1,0 +1,61 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro'
+import Header from '@/components/Header.astro'
+import Footer from '@/components/Footer.astro'
+import { bookingExperience, siteConfig, whatsappBaseUrl } from '@/config/business'
+
+const title = 'Booking Request Received | SafariRail'
+const description = 'Your SafariRail SGR booking assistance request has been received.'
+---
+
+<BaseLayout title={title} description={description} canonical={`${siteConfig.url}/booking-request-received`} robots="noindex, nofollow">
+  <main>
+    <section class="status-hero">
+      <Header />
+      <div class="status-hero-content">
+        <p class="eyebrow">Request submitted</p>
+        <h1>We received your booking request.</h1>
+        <p>This is not yet a confirmed ticket or completed purchase. We will verify seat availability before sending payment instructions.</p>
+      </div>
+    </section>
+
+    <section class="status-section">
+      <div class="status-panel">
+        <div class="status-mark" aria-hidden="true">OK</div>
+        <p class="eyebrow">Your SafariRail reference</p>
+        <strong class="status-reference" id="request-reference">Reference unavailable</strong>
+        <h2>Continue on WhatsApp</h2>
+        <p>Send us your reference so we can confirm availability and guide you through payment. {bookingExperience.responseTimeLabel}</p>
+        <div class="status-actions">
+          <a class="primary-button" id="request-whatsapp" href={whatsappBaseUrl} target="_blank" rel="noopener noreferrer">Continue on WhatsApp</a>
+          <a class="ghost-dark-button" href="/">Return Home</a>
+        </div>
+      </div>
+      <div class="status-steps" aria-label="What happens next">
+        <article><span>1</span><div><h3>Availability check</h3><p>We verify your requested train and class.</p></div></article>
+        <article><span>2</span><div><h3>Payment instructions</h3><p>We send the appropriate payment details after seats are checked.</p></div></article>
+        <article><span>3</span><div><h3>Ticket confirmation</h3><p>Your purchase is complete only after payment and ticket confirmation.</p></div></article>
+      </div>
+    </section>
+  </main>
+  <Footer />
+</BaseLayout>
+
+<script is:inline define:vars={{ whatsappNumber: siteConfig.whatsappNumber }}>
+  const params = new URLSearchParams(window.location.search)
+  const rawReference = params.get('reference') || ''
+  const reference = /^SR-[A-Z0-9-]{8,40}$/.test(rawReference) ? rawReference : ''
+  const referenceOutput = document.querySelector('#request-reference')
+  const whatsappLink = document.querySelector('#request-whatsapp')
+
+  if (reference && referenceOutput) {
+    referenceOutput.textContent = reference
+  }
+
+  if (whatsappLink instanceof HTMLAnchorElement) {
+    const message = reference
+      ? `Hi SafariRail, my booking request reference is ${reference}. Please confirm availability and payment details.`
+      : 'Hi SafariRail, I submitted a booking request. Please help me confirm availability.'
+    whatsappLink.href = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`
+  }
+</script>

@@ -115,16 +115,6 @@ import { bookingExperience, departures, formatKes, siteConfig, ticketClasses } f
   </div>
 </form>
 
-<section class="booking-success" id="booking-success" hidden aria-live="polite">
-  <p class="eyebrow">Request Submitted</p>
-  <h2>Booking request received</h2>
-  <p>Your reference is:</p>
-  <strong id="booking-reference"></strong>
-  <p>
-    We will confirm seat availability and payment instructions next. Continue on WhatsApp with your reference for final confirmation.
-  </p>
-  <a class="primary-button" id="booking-whatsapp" href="#" target="_blank" rel="noopener noreferrer">Continue on WhatsApp</a>
-</section>
 
 <script>
   const form = document.querySelector('#booking-panel')
@@ -135,9 +125,7 @@ import { bookingExperience, departures, formatKes, siteConfig, ticketClasses } f
   const totalOutput = document.querySelector('#booking-total')
   const statusOutput = document.querySelector('#booking-status')
   const submitButton = form?.querySelector('button[type="submit"]')
-  const successPanel = document.querySelector('#booking-success')
-  const bookingReference = document.querySelector('#booking-reference')
-  const whatsappLink = document.querySelector('#booking-whatsapp')
+
   const prevButton = document.querySelector('#booking-prev')
   const nextButton = document.querySelector('#booking-next')
   const stepElements = Array.from(document.querySelectorAll('[data-step]'))
@@ -263,13 +251,11 @@ import { bookingExperience, departures, formatKes, siteConfig, ticketClasses } f
         throw new Error(`${result.message || 'Submission failed.'}${details}`)
       }
 
-      form.hidden = true
-      if (successPanel instanceof HTMLElement) successPanel.hidden = false
-      if (bookingReference instanceof HTMLElement) bookingReference.textContent = result.bookingReference || ''
-      if (whatsappLink instanceof HTMLAnchorElement && typeof result.whatsappUrl === 'string') {
-        whatsappLink.href = result.whatsappUrl
-      }
-      successPanel?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      const bookingReference = typeof result.bookingReference === 'string' ? result.bookingReference : ''
+      const requestPage = new URL('/booking-request-received', window.location.origin)
+      requestPage.searchParams.set('reference', bookingReference)
+      window.location.assign(requestPage)
+      return
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'We could not submit your booking right now. Please try again.', true)
     } finally {
