@@ -1,4 +1,4 @@
-import { REVIEW_MAX_LENGTH, REVIEW_NAME_MAX_LENGTH, REVIEW_ROUTE_MAX_LENGTH } from '../src/config/reviews'
+import { REVIEW_BOOKING_REFERENCE_MAX_LENGTH, REVIEW_MAX_LENGTH, REVIEW_NAME_MAX_LENGTH, REVIEW_ROUTE_MAX_LENGTH, REVIEW_ROUTES } from '../src/config/reviews'
 
 const SPAM_PATTERN = /(https?:\/\/|www\.|<a\s|<\/a>|casino|viagra|crypto\s+airdrop)/i
 
@@ -26,6 +26,7 @@ export type PublicReview = {
   route: string
   reviewText: string
   createdAt: string
+  verifiedBooking: boolean
 }
 
 export type ApiResponse = {
@@ -39,6 +40,7 @@ type ReviewPayload = {
   rating?: unknown
   route?: unknown
   reviewText?: unknown
+  bookingReference?: unknown
   website?: unknown
 }
 
@@ -47,6 +49,11 @@ type NormalizedReview = {
   rating: number
   route: string
   reviewText: string
+  bookingReference: string
+}
+
+type BookingLookup = {
+  id: string
 }
 
 type ModerationPayload = {
@@ -74,6 +81,10 @@ function parseRating(value: unknown) {
 
 function isModerationStatus(value: string): value is ModerationStatus {
   return value === 'approved' || value === 'rejected'
+}
+
+function isReviewRoute(value: string) {
+  return (REVIEW_ROUTES as readonly string[]).includes(value)
 }
 
 function getSupabaseConfig(env: Env) {
@@ -104,14 +115,18 @@ export function validateReviewPayload(payload: ReviewPayload): ValidationResult<
   const rating = parseRating(payload.rating)
   const route = cleanText(payload.route, REVIEW_ROUTE_MAX_LENGTH)
   const reviewText = cleanText(payload.reviewText, REVIEW_MAX_LENGTH)
+  const bookingReference = cleanText(payload.bookingReference, REVIEW_BOOKING_REFERENCE_MAX_LENGTH).toUpperCase()
   const website = cleanText(payload.website, 200)
 
   if (!name) errors.push('Name is required.')
   if (rating < 1 || rating > 5) errors.push('Rating must be between 1 and 5.')
   if (!reviewText) errors.push('Review text is required.')
   if (typeof payload.name === 'string' && payload.name.trim().length > REVIEW_NAME_MAX_LENGTH) errors.push('Name is too long.')
+  if (!route) errors.push('Route is required.')
+  if (route && !isReviewRoute(route)) errors.push('Route must be Nairobi to Mombasa, Mombasa to Nairobi, or Round trip.')
   if (typeof payload.route === 'string' && payload.route.trim().length > REVIEW_ROUTE_MAX_LENGTH) errors.push('Route is too long.')
   if (typeof payload.reviewText === 'string' && payload.reviewText.trim().length > REVIEW_MAX_LENGTH) errors.push('Review is too long.')
+  if (typeof payload.bookingReference === 'string' && payload.bookingReference.trim().length > REVIEW_BOOKING_REFERENCE_MAX_LENGTH) errors.push('Booking reference is too long.')
   if (website) errors.push('Review could not be submitted.')
   if (SPAM_PATTERN.test(`${name} ${route} ${reviewText}`)) errors.push('Review appears to contain spam.')
 
@@ -122,8 +137,9 @@ export function validateReviewPayload(payload: ReviewPayload): ValidationResult<
     value: {
       name,
       rating,
-      route: route || 'Madaraka Express',
+      route,
       reviewText,
+      bookingReference,
     },
   }
 }
@@ -144,11 +160,30 @@ export function validateModerationPayload(payload: ModerationPayload): Validatio
   return { ok: true, value: { id, status: status as ModerationStatus } }
 }
 
+async function findBookingByReference(reference: string, baseUrl: string, serviceRoleKey: string, fetcher: Fetcher) {
+  if (!reference) return null
+
+  const query = new URLSearchParams({
+    select: 'id',
+    reference: `eq.${reference}`,
+    limit: '1',
+  })
+  const response = await fetcher(`${baseUrl}/rest/v1/bookings?${query.toString()}`, {
+    method: 'GET',
+    headers: supabaseHeaders(serviceRoleKey),
+  })
+
+  if (!response.ok) throw new Error(`Supabase booking lookup failed: ${response.status}`)
+  const rows = (await response.json()) as BookingLookup[]
+  return rows[0] || null
+}
+
 export async function submitReview(payload: ReviewPayload, env: Env = process.env, fetcher: Fetcher = fetch): Promise<ValidationResult<NormalizedReview>> {
   const validation = validateReviewPayload(payload)
   if (!validation.ok) return validation
 
   const { baseUrl, serviceRoleKey } = getSupabaseConfig(env)
+  const matchedBooking = await findBookingByReference(validation.value.bookingReference, baseUrl, serviceRoleKey, fetcher)
   const response = await fetcher(`${baseUrl}/rest/v1/reviews`, {
     method: 'POST',
     headers: {
@@ -160,6 +195,8 @@ export async function submitReview(payload: ReviewPayload, env: Env = process.en
       rating: validation.value.rating,
       route: validation.value.route,
       review_text: validation.value.reviewText,
+      booking_reference: validation.value.bookingReference || null,
+      verified_booking: Boolean(matchedBooking),
       status: 'pending',
     }),
   })
@@ -171,7 +208,7 @@ export async function submitReview(payload: ReviewPayload, env: Env = process.en
 export async function listApprovedReviews(env: Env = process.env, fetcher: Fetcher = fetch) {
   const { baseUrl, serviceRoleKey } = getSupabaseConfig(env)
   const query = new URLSearchParams({
-    select: 'name,rating,route,review_text,created_at',
+    select: 'name,rating,route,review_text,created_at,verified_booking',
     status: 'eq.approved',
     order: 'created_at.desc',
     limit: '24',
@@ -188,6 +225,7 @@ export async function listApprovedReviews(env: Env = process.env, fetcher: Fetch
     route: string
     review_text: string
     created_at: string
+    verified_booking: boolean | null
   }>
 
   return rows.map((row) => ({
@@ -196,6 +234,7 @@ export async function listApprovedReviews(env: Env = process.env, fetcher: Fetch
     route: row.route,
     reviewText: row.review_text,
     createdAt: row.created_at,
+    verifiedBooking: row.verified_booking === true,
   }))
 }
 
@@ -273,4 +312,4 @@ export async function moderateReview(payload: ModerationPayload, env: Env = proc
   return validation
 }
 
-export { REVIEW_MAX_LENGTH, REVIEW_NAME_MAX_LENGTH, REVIEW_ROUTE_MAX_LENGTH }
+export { REVIEW_BOOKING_REFERENCE_MAX_LENGTH, REVIEW_MAX_LENGTH, REVIEW_NAME_MAX_LENGTH, REVIEW_ROUTE_MAX_LENGTH, REVIEW_ROUTES }

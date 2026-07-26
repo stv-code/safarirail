@@ -683,6 +683,38 @@ h1 {
   background: var(--white);
 }
 
+.review-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.review-summary article {
+  padding: 18px;
+  border: 1px solid #dfe5df;
+  border-radius: var(--radius);
+  background: var(--white);
+}
+
+.review-summary strong {
+  display: block;
+  color: var(--forest);
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.review-summary span {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .reviews-list {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -705,21 +737,46 @@ h1 {
 }
 
 .review-card h3 {
-  margin-bottom: 0;
+  margin-bottom: 4px;
 }
 
-.review-card span {
+.review-meta {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.review-stars {
   color: var(--ochre);
   font-weight: 800;
   white-space: nowrap;
 }
 
-.review-route {
-  color: var(--coral);
-  font-size: 0.78rem;
+.review-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.review-badges span {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--cream);
+  color: var(--forest);
+  font-size: 0.72rem;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+
+.review-badges span:last-child {
+  background: var(--mist);
+  color: var(--leaf);
 }
 
 .review-card p:last-child {
@@ -730,7 +787,7 @@ h1 {
 
 .review-form {
   display: grid;
-  grid-template-columns: 1fr 0.7fr 1fr;
+  grid-template-columns: 1fr 0.7fr 1fr 1fr;
   gap: 14px;
   padding: 18px;
   border-radius: var(--radius);
@@ -739,7 +796,7 @@ h1 {
 
 .review-text-field,
 .review-form .form-status {
-  grid-column: span 3;
+  grid-column: span 4;
 }
 
 .review-form textarea {
@@ -1046,6 +1103,7 @@ h1 {
   .process-grid,
   .pricing-grid,
   .payment-grid,
+  .review-summary,
   .reviews-list,
   .contact-grid,
   .footer-grid,
