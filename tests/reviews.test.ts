@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   listApprovedReviews,
   moderateReview,
@@ -6,6 +6,7 @@ import {
   validateModerationPayload,
   validateReviewPayload,
 } from '../api/reviews.shared'
+import reviewsHandler from '../api/reviews/index'
 
 const env = {
   SUPABASE_URL: 'https://example.supabase.co',
@@ -291,5 +292,70 @@ describe('review moderation', () => {
     expect(result.ok).toBe(false)
     if (result.ok) return
     expect(result.errors).toContain('Review not found.')
+  })
+})
+
+describe('review API route', () => {
+  const originalSupabaseUrl = process.env.SUPABASE_URL
+  const originalServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+  afterEach(() => {
+    if (originalSupabaseUrl === undefined) delete process.env.SUPABASE_URL
+    else process.env.SUPABASE_URL = originalSupabaseUrl
+
+    if (originalServiceRoleKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY
+    else process.env.SUPABASE_SERVICE_ROLE_KEY = originalServiceRoleKey
+  })
+
+  function createResponse() {
+    const headers = new Map<string, string>()
+    return {
+      statusCode: 0,
+      body: '',
+      setHeader(name: string, value: string) {
+        headers.set(name, value)
+      },
+      end(body?: string) {
+        this.body = body || ''
+      },
+      json<T>() {
+        return JSON.parse(this.body) as T
+      },
+      headers,
+    }
+  }
+
+  it('returns an empty approved review list when review storage is not configured', async () => {
+    delete process.env.SUPABASE_URL
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY
+    const res = createResponse()
+
+    await reviewsHandler({ method: 'GET', headers: {} }, res)
+
+    expect(res.statusCode).toBe(200)
+    expect(res.json<{ reviews: unknown[] }>().reviews).toEqual([])
+  })
+
+  it('returns a setup message when review submission storage is not configured', async () => {
+    delete process.env.SUPABASE_URL
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY
+    const res = createResponse()
+
+    await reviewsHandler(
+      {
+        method: 'POST',
+        headers: {},
+        body: {
+          name: 'Amina',
+          rating: 5,
+          route: 'Nairobi to Mombasa',
+          reviewText: 'Helpful booking support.',
+        },
+      },
+      res,
+    )
+
+    expect(res.statusCode).toBe(503)
+    expect(res.json<{ message: string }>().message).toContain('SUPABASE_URL')
   })
 })

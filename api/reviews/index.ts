@@ -23,15 +23,38 @@ function sendJson(res: ReviewResponse, statusCode: number, body: ApiResponse) {
   res.end(JSON.stringify(body))
 }
 
+function getReviewErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : ''
+
+  if (/Supabase environment variables are not configured/i.test(message)) {
+    return 'Review storage is not configured. Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in the production environment.'
+  }
+
+  if (/Rate limiter failed|Rate limiter command failed/i.test(message)) {
+    return 'Review submissions are temporarily unavailable because rate limiting is not reachable.'
+  }
+
+  if (/Supabase review insert failed|Supabase booking lookup failed/i.test(message)) {
+    return 'Review storage is temporarily unavailable. Please try again later.'
+  }
+
+  return 'We could not save your review right now. Please try again later.'
+}
+
 export default async function handler(req: ReviewRequest, res: ReviewResponse) {
-  try {
-    if (req.method === 'GET') {
+  if (req.method === 'GET') {
+    try {
       const reviews = await listApprovedReviews()
       sendJson(res, 200, { reviews })
-      return
+    } catch (error) {
+      console.error('Review listing failed', error)
+      sendJson(res, 200, { reviews: [] })
     }
+    return
+  }
 
-    if (req.method === 'POST') {
+  if (req.method === 'POST') {
+    try {
       const ip = getClientIp(req)
       const rateLimit = await reviewSubmitLimiter.check(ip)
       if (rateLimit.limited) {
@@ -50,17 +73,18 @@ export default async function handler(req: ReviewRequest, res: ReviewResponse) {
       sendJson(res, 201, {
         message: 'Thank you. Your review has been submitted and will appear after approval.',
       })
-      return
+    } catch (error) {
+      const isSyntaxError = error instanceof SyntaxError
+      console.error('Review submission failed', error)
+      sendJson(res, isSyntaxError ? 400 : 503, {
+        message: isSyntaxError ? 'Invalid JSON payload.' : getReviewErrorMessage(error),
+      })
     }
-
-    res.setHeader('Allow', 'GET, POST')
-    sendJson(res, 405, { message: 'Method not allowed.' })
-  } catch (error) {
-    const isSyntaxError = error instanceof SyntaxError
-    sendJson(res, isSyntaxError ? 400 : 500, {
-      message: isSyntaxError ? 'Invalid JSON payload.' : 'We could not process reviews right now.',
-    })
+    return
   }
+
+  res.setHeader('Allow', 'GET, POST')
+  sendJson(res, 405, { message: 'Method not allowed.' })
 }
 
 export { REVIEW_MAX_LENGTH, REVIEW_NAME_MAX_LENGTH, REVIEW_ROUTE_MAX_LENGTH }
