@@ -178,45 +178,99 @@ async function findBookingByReference(reference: string, baseUrl: string, servic
   return rows[0] || null
 }
 
+function isMissingReviewVerificationColumnError(response: Response, body: string) {
+  return response.status === 400 && /(booking_reference|verified_booking|schema cache|column)/i.test(body)
+}
+
+async function getResponseBody(response: Response) {
+  try {
+    return await response.text()
+  } catch {
+    return ''
+  }
+}
+
+function reviewInsertBody(review: NormalizedReview, verifiedBooking: boolean, includeVerificationColumns: boolean) {
+  const body: Record<string, string | number | boolean | null> = {
+    name: review.name,
+    rating: review.rating,
+    route: review.route,
+    review_text: review.reviewText,
+    status: 'pending',
+  }
+
+  if (includeVerificationColumns) {
+    body.booking_reference = review.bookingReference || null
+    body.verified_booking = verifiedBooking
+  }
+
+  return body
+}
+
+async function insertReview(
+  review: NormalizedReview,
+  verifiedBooking: boolean,
+  includeVerificationColumns: boolean,
+  baseUrl: string,
+  serviceRoleKey: string,
+  fetcher: Fetcher,
+) {
+  return fetcher(`${baseUrl}/rest/v1/reviews`, {
+    method: 'POST',
+    headers: {
+      ...supabaseHeaders(serviceRoleKey),
+      Prefer: 'return=minimal',
+    },
+    body: JSON.stringify(reviewInsertBody(review, verifiedBooking, includeVerificationColumns)),
+  })
+}
+
 export async function submitReview(payload: ReviewPayload, env: Env = process.env, fetcher: Fetcher = fetch): Promise<ValidationResult<NormalizedReview>> {
   const validation = validateReviewPayload(payload)
   if (!validation.ok) return validation
 
   const { baseUrl, serviceRoleKey } = getSupabaseConfig(env)
   const matchedBooking = await findBookingByReference(validation.value.bookingReference, baseUrl, serviceRoleKey, fetcher)
-  const response = await fetcher(`${baseUrl}/rest/v1/reviews`, {
-    method: 'POST',
-    headers: {
-      ...supabaseHeaders(serviceRoleKey),
-      Prefer: 'return=minimal',
-    },
-    body: JSON.stringify({
-      name: validation.value.name,
-      rating: validation.value.rating,
-      route: validation.value.route,
-      review_text: validation.value.reviewText,
-      booking_reference: validation.value.bookingReference || null,
-      verified_booking: Boolean(matchedBooking),
-      status: 'pending',
-    }),
-  })
+  let response = await insertReview(validation.value, Boolean(matchedBooking), true, baseUrl, serviceRoleKey, fetcher)
+
+  if (!response.ok) {
+    const body = await getResponseBody(response)
+    if (isMissingReviewVerificationColumnError(response, body)) {
+      response = await insertReview(validation.value, false, false, baseUrl, serviceRoleKey, fetcher)
+    }
+  }
 
   if (!response.ok) throw new Error(`Supabase review insert failed: ${response.status}`)
   return validation
 }
 
-export async function listApprovedReviews(env: Env = process.env, fetcher: Fetcher = fetch) {
-  const { baseUrl, serviceRoleKey } = getSupabaseConfig(env)
+async function fetchApprovedReviews(baseUrl: string, serviceRoleKey: string, fetcher: Fetcher, includeVerificationColumns: boolean) {
   const query = new URLSearchParams({
-    select: 'name,rating,route,review_text,created_at,verified_booking',
+    select: includeVerificationColumns
+      ? 'name,rating,route,review_text,created_at,verified_booking'
+      : 'name,rating,route,review_text,created_at',
     status: 'eq.approved',
     order: 'created_at.desc',
     limit: '24',
   })
-  const response = await fetcher(`${baseUrl}/rest/v1/reviews?${query.toString()}`, {
+  return fetcher(`${baseUrl}/rest/v1/reviews?${query.toString()}`, {
     method: 'GET',
     headers: supabaseHeaders(serviceRoleKey),
   })
+}
+
+export async function listApprovedReviews(env: Env = process.env, fetcher: Fetcher = fetch) {
+  const { baseUrl, serviceRoleKey } = getSupabaseConfig(env)
+  let response = await fetchApprovedReviews(baseUrl, serviceRoleKey, fetcher, true)
+  let includesVerificationColumns = true
+
+  if (!response.ok) {
+    const body = await getResponseBody(response)
+    if (isMissingReviewVerificationColumnError(response, body)) {
+      response = await fetchApprovedReviews(baseUrl, serviceRoleKey, fetcher, false)
+      includesVerificationColumns = false
+    }
+  }
 
   if (!response.ok) throw new Error(`Supabase review list failed: ${response.status}`)
   const rows = (await response.json()) as Array<{
@@ -225,7 +279,7 @@ export async function listApprovedReviews(env: Env = process.env, fetcher: Fetch
     route: string
     review_text: string
     created_at: string
-    verified_booking: boolean | null
+    verified_booking?: boolean | null
   }>
 
   return rows.map((row) => ({
@@ -234,7 +288,7 @@ export async function listApprovedReviews(env: Env = process.env, fetcher: Fetch
     route: row.route,
     reviewText: row.review_text,
     createdAt: row.created_at,
-    verifiedBooking: row.verified_booking === true,
+    verifiedBooking: includesVerificationColumns && row.verified_booking === true,
   }))
 }
 

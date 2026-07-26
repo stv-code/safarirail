@@ -126,6 +126,43 @@ describe('review persistence', () => {
     expect(body.verified_booking).toBe(true)
   })
 
+  it('falls back to legacy review insert columns when verification columns are missing', async () => {
+    const fetcher = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (init?.method === 'GET' && url.includes('/rest/v1/bookings?')) {
+        return new Response(JSON.stringify([{ id: 'booking-id' }]), { status: 200 })
+      }
+      if (init?.method === 'POST' && url.includes('/rest/v1/reviews')) {
+        const body = JSON.parse(String(init.body)) as Record<string, unknown>
+        if ('verified_booking' in body) {
+          return new Response(JSON.stringify({ message: "Could not find the 'verified_booking' column" }), { status: 400 })
+        }
+        return new Response(null, { status: 201 })
+      }
+      return new Response(null, { status: 500 })
+    })
+
+    const result = await submitReview(
+      {
+        name: 'Amina',
+        rating: 5,
+        route: 'Round trip',
+        reviewText: 'Clear instructions.',
+        bookingReference: 'sr-123',
+      },
+      env,
+      fetcher,
+    )
+
+    expect(result.ok).toBe(true)
+    const postBodies = fetcher.mock.calls
+      .filter((call) => call[1]?.method === 'POST')
+      .map((call) => JSON.parse(String(call[1]?.body)) as Record<string, unknown>)
+    expect(postBodies).toHaveLength(2)
+    expect(postBodies[0]).toHaveProperty('verified_booking', true)
+    expect(postBodies[1]).not.toHaveProperty('verified_booking')
+    expect(postBodies[1]).not.toHaveProperty('booking_reference')
+  })
   it('lists only approved reviews without exposing private identifiers', async () => {
     const fetcher = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input)
@@ -151,6 +188,31 @@ describe('review persistence', () => {
     expect(reviews[0]?.verifiedBooking).toBe(true)
     expect(reviews[0]).not.toHaveProperty('id')
     expect(reviews[0]).not.toHaveProperty('bookingReference')
+  })
+
+  it('falls back to legacy approved review listing when verification columns are missing', async () => {
+    const fetcher = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.includes('verified_booking')) {
+        return new Response(JSON.stringify({ message: "Could not find the 'verified_booking' column" }), { status: 400 })
+      }
+      expect(url).toContain('select=name%2Crating%2Croute%2Creview_text%2Ccreated_at')
+      return new Response(JSON.stringify([
+        {
+          name: 'Amina',
+          rating: 5,
+          route: 'Mombasa to Nairobi',
+          review_text: 'Excellent support.',
+          created_at: '2099-01-01T00:00:00Z',
+        },
+      ]), { status: 200 })
+    })
+
+    const reviews = await listApprovedReviews(env, fetcher)
+
+    expect(reviews).toHaveLength(1)
+    expect(reviews[0]?.verifiedBooking).toBe(false)
+    expect(fetcher).toHaveBeenCalledTimes(2)
   })
 })
 
