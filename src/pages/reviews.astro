@@ -15,7 +15,7 @@ import {
 
 <BaseLayout
   title="Traveller Reviews | SafariRail"
-  description="Read moderated SafariRail traveller reviews and submit feedback after using our SGR booking assistance."
+  description="Read SafariRail traveller reviews and submit feedback after using our SGR booking assistance."
 >
   <main>
     <section class="subhero">
@@ -32,12 +32,12 @@ import {
         <p class="eyebrow">Recent Feedback</p>
         <div>
           <h2>What Travellers Say</h2>
-          <p>Reviews are moderated before publication. We show country, route, travel month, traveller type, rating, and whether the reviewer matched a stored booking email.</p>
+          <p>Traveller stories include country, route, travel month, traveller type, and rating so future visitors can compare trips like theirs.</p>
         </div>
       </div>
       <div class="review-summary" id="review-summary" hidden></div>
       <div class="reviews-list" id="reviews-list" aria-live="polite">
-        <p class="reviews-empty">Loading approved reviews...</p>
+        <p class="reviews-empty">Loading traveller reviews...</p>
       </div>
     </section>
 
@@ -46,7 +46,7 @@ import {
         <p class="eyebrow">Share Your Experience</p>
         <div>
           <h2>Submit a Review</h2>
-          <p>Add the email used for booking if you want us to verify the review. The email is private and never displayed publicly.</p>
+          <p>Add the email used for booking if you want us to privately match your review to a SafariRail traveller record. The email is never displayed publicly.</p>
         </div>
       </div>
       <form class="review-form" id="review-form">
@@ -177,7 +177,7 @@ import {
     }
 
     const average = reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
-    const verifiedCount = reviews.filter((review) => review.verifiedTraveller).length
+    const countryCount = new Set(reviews.map((review) => review.country).filter(Boolean)).size
     reviewSummary.hidden = false
     reviewSummary.innerHTML = `
       <article>
@@ -186,11 +186,11 @@ import {
       </article>
       <article>
         <strong>${reviews.length}</strong>
-        <span>Approved reviews</span>
+        <span>Traveller reviews</span>
       </article>
       <article>
-        <strong>${verifiedCount}</strong>
-        <span>Verified travellers</span>
+        <strong>${countryCount}</strong>
+        <span>Countries represented</span>
       </article>
     `
   }
@@ -208,7 +208,7 @@ import {
     renderSummary(reviews)
 
     if (reviews.length === 0) {
-      reviewsList.innerHTML = '<p class="reviews-empty">No approved reviews yet. Be the first to share your experience.</p>'
+      reviewsList.innerHTML = '<p class="reviews-empty">No traveller reviews yet. Be the first to share your experience.</p>'
       return
     }
 
@@ -223,7 +223,7 @@ import {
         </div>
         <p class="review-context">${escapeHtml(compactContext(review) || review.route || 'Madaraka Express')}</p>
         <div class="review-badges">
-          ${review.verifiedTraveller ? '<span>Verified traveller</span>' : '<span>Moderated traveller review</span>'}
+          ${review.verifiedTraveller ? '<span>Verified traveller</span>' : '<span>Traveller review</span>'}
         </div>
         <p>${escapeHtml(review.reviewText)}</p>
       </article>
@@ -238,7 +238,7 @@ import {
       renderReviews(Array.isArray(result.reviews) ? result.reviews : [])
     } catch {
       if (reviewsList instanceof HTMLElement) {
-        reviewsList.innerHTML = '<p class="reviews-empty">Approved reviews are unavailable right now.</p>'
+        reviewsList.innerHTML = '<p class="reviews-empty">Traveller reviews are unavailable right now.</p>'
       }
     }
   }
@@ -279,7 +279,7 @@ import {
         throw new Error(`${result.message || 'Review submission failed.'}${details}`)
       }
       reviewForm.reset()
-      setReviewStatus('Thank you. Your review has been submitted and will appear after approval.')
+      setReviewStatus('Thank you. Your review has been submitted.')
     } catch (error) {
       setReviewStatus(error instanceof Error ? error.message : 'We could not submit your review right now.', true)
     } finally {

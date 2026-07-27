@@ -83,7 +83,7 @@ export default async function handler(req: ReviewRequest, res: ReviewResponse) {
       }
 
       sendJson(res, 201, {
-        message: 'Thank you. Your review has been submitted and will appear after approval.',
+        message: 'Thank you. Your review has been submitted.',
       })
     } catch (error) {
       const isSyntaxError = error instanceof SyntaxError
