@@ -13,26 +13,40 @@ const env = {
   SUPABASE_SERVICE_ROLE_KEY: 'service-role-key',
 }
 
+const validReview = {
+  name: 'Amina',
+  rating: 5,
+  route: 'Nairobi to Mombasa',
+  country: 'United States',
+  travelMonth: 'July',
+  travellerType: 'Family',
+  reviewText: 'Helpful booking support and clear instructions.',
+}
+
 describe('review validation', () => {
-  it('accepts a valid review', () => {
+  it('accepts a valid review with traveller context', () => {
     const result = validateReviewPayload({
-      name: 'Amina',
-      rating: 5,
-      route: 'Nairobi to Mombasa',
-      reviewText: 'Helpful booking support and clear instructions.',
-      bookingReference: ' sr-123 ',
+      ...validReview,
+      bookingEmail: ' AMINA@EXAMPLE.COM ',
     })
 
     expect(result.ok).toBe(true)
     if (!result.ok) return
     expect(result.value.rating).toBe(5)
-    expect(result.value.bookingReference).toBe('SR-123')
+    expect(result.value.country).toBe('United States')
+    expect(result.value.travelMonth).toBe('July')
+    expect(result.value.travellerType).toBe('Family')
+    expect(result.value.bookingEmail).toBe('amina@example.com')
   })
 
   it('rejects missing fields and invalid ratings', () => {
     const result = validateReviewPayload({
       name: '',
       rating: 6,
+      route: '',
+      country: '',
+      travelMonth: '',
+      travellerType: '',
       reviewText: '',
     })
 
@@ -40,26 +54,46 @@ describe('review validation', () => {
     if (result.ok) return
     expect(result.errors).toContain('Name is required.')
     expect(result.errors).toContain('Rating must be between 1 and 5.')
+    expect(result.errors).toContain('Route is required.')
+    expect(result.errors).toContain('Country is required.')
+    expect(result.errors).toContain('Travel month is required.')
+    expect(result.errors).toContain('Traveller type is required.')
     expect(result.errors).toContain('Review text is required.')
   })
 
-  it('rejects custom routes outside the supported SGR options', () => {
+  it('rejects custom routes and context outside the supported options', () => {
     const result = validateReviewPayload({
-      name: 'Amina',
-      rating: 5,
+      ...validReview,
       route: 'Nairobi to Kisumu',
-      reviewText: 'Helpful booking support.',
+      country: 'Atlantis',
+      travelMonth: 'Rainy season',
+      travellerType: 'Influencer',
     })
 
     expect(result.ok).toBe(false)
     if (result.ok) return
     expect(result.errors).toContain('Route must be Nairobi to Mombasa, Mombasa to Nairobi, or Round trip.')
+    expect(result.errors).toContain('Country must be selected from the list.')
+    expect(result.errors).toContain('Travel month must be selected from the list.')
+    expect(result.errors).toContain('Traveller type must be selected from the list.')
   })
+
+  it('rejects invalid booking emails', () => {
+    const result = validateReviewPayload({
+      ...validReview,
+      bookingEmail: 'not-an-email',
+    })
+
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.errors).toContain('Booking email must be a valid email address.')
+  })
+
   it('rejects spam and honeypot submissions', () => {
     const result = validateReviewPayload({
+      ...validReview,
       name: 'Bot',
-      rating: 5,
-      route: 'www.spam.test',
+      route: 'Round trip',
       reviewText: 'Great casino link',
       website: 'https://bot.test',
     })
@@ -75,32 +109,33 @@ describe('review persistence', () => {
   it('submits reviews as pending', async () => {
     const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(null, { status: 201 }))
 
-    const result = await submitReview(
-      {
-        name: 'Amina',
-        rating: 5,
-        route: 'Nairobi to Mombasa',
-        reviewText: 'Clear instructions.',
-      },
-      env,
-      fetcher,
-    )
+    const result = await submitReview(validReview, env, fetcher)
 
     expect(result.ok).toBe(true)
     expect(fetcher).toHaveBeenCalledTimes(1)
     const request = fetcher.mock.calls[0]?.[1]
-    const body = JSON.parse(String(request?.body)) as { status: string; booking_reference: string | null; verified_booking: boolean }
+    const body = JSON.parse(String(request?.body)) as {
+      status: string
+      country: string
+      travel_month: string
+      traveller_type: string
+      booking_email: string | null
+      verified_traveller: boolean
+    }
     expect(body.status).toBe('pending')
-    expect(body.booking_reference).toBeNull()
-    expect(body.verified_booking).toBe(false)
+    expect(body.country).toBe('United States')
+    expect(body.travel_month).toBe('July')
+    expect(body.traveller_type).toBe('Family')
+    expect(body.booking_email).toBeNull()
+    expect(body.verified_traveller).toBe(false)
   })
 
-  it('marks submissions as verified when the booking reference exists', async () => {
+  it('marks submissions as verified when the booking email exists', async () => {
     const fetcher = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
-      if (init?.method === 'GET' && url.includes('/rest/v1/bookings?')) {
-        expect(url).toContain('reference=eq.SR-123')
-        return new Response(JSON.stringify([{ id: 'booking-id' }]), { status: 200 })
+      if (init?.method === 'GET' && url.includes('/rest/v1/passengers?')) {
+        expect(url).toContain('email=eq.amina%40example.com')
+        return new Response(JSON.stringify([{ id: 'passenger-id' }]), { status: 200 })
       }
       if (init?.method === 'POST' && url.includes('/rest/v1/reviews')) {
         return new Response(null, { status: 201 })
@@ -110,11 +145,8 @@ describe('review persistence', () => {
 
     const result = await submitReview(
       {
-        name: 'Amina',
-        rating: 5,
-        route: 'Nairobi to Mombasa',
-        reviewText: 'Clear instructions.',
-        bookingReference: 'sr-123',
+        ...validReview,
+        bookingEmail: 'amina@example.com',
       },
       env,
       fetcher,
@@ -122,21 +154,21 @@ describe('review persistence', () => {
 
     expect(result.ok).toBe(true)
     const request = fetcher.mock.calls.find((call) => call[1]?.method === 'POST')?.[1]
-    const body = JSON.parse(String(request?.body)) as { booking_reference: string; verified_booking: boolean }
-    expect(body.booking_reference).toBe('SR-123')
-    expect(body.verified_booking).toBe(true)
+    const body = JSON.parse(String(request?.body)) as { booking_email: string; verified_traveller: boolean }
+    expect(body.booking_email).toBe('amina@example.com')
+    expect(body.verified_traveller).toBe(true)
   })
 
-  it('falls back to legacy review insert columns when verification columns are missing', async () => {
+  it('falls back to legacy review insert columns when context columns are missing', async () => {
     const fetcher = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
-      if (init?.method === 'GET' && url.includes('/rest/v1/bookings?')) {
-        return new Response(JSON.stringify([{ id: 'booking-id' }]), { status: 200 })
+      if (init?.method === 'GET' && url.includes('/rest/v1/passengers?')) {
+        return new Response(JSON.stringify([{ id: 'passenger-id' }]), { status: 200 })
       }
       if (init?.method === 'POST' && url.includes('/rest/v1/reviews')) {
         const body = JSON.parse(String(init.body)) as Record<string, unknown>
-        if ('verified_booking' in body) {
-          return new Response(JSON.stringify({ message: "Could not find the 'verified_booking' column" }), { status: 400 })
+        if ('verified_traveller' in body) {
+          return new Response(JSON.stringify({ message: "Could not find the 'verified_traveller' column" }), { status: 400 })
         }
         return new Response(null, { status: 201 })
       }
@@ -145,11 +177,9 @@ describe('review persistence', () => {
 
     const result = await submitReview(
       {
-        name: 'Amina',
-        rating: 5,
+        ...validReview,
         route: 'Round trip',
-        reviewText: 'Clear instructions.',
-        bookingReference: 'sr-123',
+        bookingEmail: 'amina@example.com',
       },
       env,
       fetcher,
@@ -160,24 +190,29 @@ describe('review persistence', () => {
       .filter((call) => call[1]?.method === 'POST')
       .map((call) => JSON.parse(String(call[1]?.body)) as Record<string, unknown>)
     expect(postBodies).toHaveLength(2)
-    expect(postBodies[0]).toHaveProperty('verified_booking', true)
-    expect(postBodies[1]).not.toHaveProperty('verified_booking')
-    expect(postBodies[1]).not.toHaveProperty('booking_reference')
+    expect(postBodies[0]).toHaveProperty('verified_traveller', true)
+    expect(postBodies[1]).not.toHaveProperty('verified_traveller')
+    expect(postBodies[1]).not.toHaveProperty('booking_email')
+    expect(postBodies[1]).not.toHaveProperty('country')
   })
+
   it('lists only approved reviews without exposing private identifiers', async () => {
     const fetcher = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input)
       expect(url).toContain('status=eq.approved')
       expect(url).not.toContain('id%2C')
-      expect(url).not.toContain('booking_reference')
+      expect(url).not.toContain('booking_email')
       return new Response(JSON.stringify([
         {
           name: 'Amina',
           rating: 5,
           route: 'Nairobi to Mombasa',
+          country: 'United States',
+          travel_month: 'July',
+          traveller_type: 'Family',
           review_text: 'Excellent support.',
           created_at: '2099-01-01T00:00:00Z',
-          verified_booking: true,
+          verified_traveller: true,
         },
       ]), { status: 200 })
     })
@@ -186,16 +221,19 @@ describe('review persistence', () => {
 
     expect(reviews).toHaveLength(1)
     expect(reviews[0]?.reviewText).toBe('Excellent support.')
-    expect(reviews[0]?.verifiedBooking).toBe(true)
+    expect(reviews[0]?.country).toBe('United States')
+    expect(reviews[0]?.travelMonth).toBe('July')
+    expect(reviews[0]?.travellerType).toBe('Family')
+    expect(reviews[0]?.verifiedTraveller).toBe(true)
     expect(reviews[0]).not.toHaveProperty('id')
-    expect(reviews[0]).not.toHaveProperty('bookingReference')
+    expect(reviews[0]).not.toHaveProperty('bookingEmail')
   })
 
-  it('falls back to legacy approved review listing when verification columns are missing', async () => {
+  it('falls back to legacy approved review listing when context columns are missing', async () => {
     const fetcher = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input)
-      if (url.includes('verified_booking')) {
-        return new Response(JSON.stringify({ message: "Could not find the 'verified_booking' column" }), { status: 400 })
+      if (url.includes('verified_traveller')) {
+        return new Response(JSON.stringify({ message: "Could not find the 'verified_traveller' column" }), { status: 400 })
       }
       expect(url).toContain('select=name%2Crating%2Croute%2Creview_text%2Ccreated_at')
       return new Response(JSON.stringify([
@@ -212,7 +250,8 @@ describe('review persistence', () => {
     const reviews = await listApprovedReviews(env, fetcher)
 
     expect(reviews).toHaveLength(1)
-    expect(reviews[0]?.verifiedBooking).toBe(false)
+    expect(reviews[0]?.country).toBe('')
+    expect(reviews[0]?.verifiedTraveller).toBe(false)
     expect(fetcher).toHaveBeenCalledTimes(2)
   })
 })
@@ -345,12 +384,7 @@ describe('review API route', () => {
       {
         method: 'POST',
         headers: {},
-        body: {
-          name: 'Amina',
-          rating: 5,
-          route: 'Nairobi to Mombasa',
-          reviewText: 'Helpful booking support.',
-        },
+        body: validReview,
       },
       res,
     )

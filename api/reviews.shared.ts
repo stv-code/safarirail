@@ -1,6 +1,19 @@
-import { REVIEW_BOOKING_REFERENCE_MAX_LENGTH, REVIEW_MAX_LENGTH, REVIEW_NAME_MAX_LENGTH, REVIEW_ROUTE_MAX_LENGTH, REVIEW_ROUTES } from '../src/config/reviews'
+import {
+  REVIEW_COUNTRIES,
+  REVIEW_COUNTRY_MAX_LENGTH,
+  REVIEW_EMAIL_MAX_LENGTH,
+  REVIEW_MAX_LENGTH,
+  REVIEW_NAME_MAX_LENGTH,
+  REVIEW_ROUTE_MAX_LENGTH,
+  REVIEW_ROUTES,
+  REVIEW_TRAVEL_MONTH_MAX_LENGTH,
+  REVIEW_TRAVEL_MONTHS,
+  REVIEW_TRAVELLER_TYPE_MAX_LENGTH,
+  REVIEW_TRAVELLER_TYPES,
+} from '../src/config/reviews'
 
 const SPAM_PATTERN = /(https?:\/\/|www\.|<a\s|<\/a>|casino|viagra|crypto\s+airdrop)/i
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 type Env = NodeJS.ProcessEnv
 type Fetcher = typeof fetch
@@ -24,9 +37,12 @@ export type PublicReview = {
   name: string
   rating: number
   route: string
+  country: string
+  travelMonth: string
+  travellerType: string
   reviewText: string
   createdAt: string
-  verifiedBooking: boolean
+  verifiedTraveller: boolean
 }
 
 export type ApiResponse = {
@@ -39,8 +55,11 @@ type ReviewPayload = {
   name?: unknown
   rating?: unknown
   route?: unknown
+  country?: unknown
+  travelMonth?: unknown
+  travellerType?: unknown
   reviewText?: unknown
-  bookingReference?: unknown
+  bookingEmail?: unknown
   website?: unknown
 }
 
@@ -48,11 +67,14 @@ type NormalizedReview = {
   name: string
   rating: number
   route: string
+  country: string
+  travelMonth: string
+  travellerType: string
   reviewText: string
-  bookingReference: string
+  bookingEmail: string
 }
 
-type BookingLookup = {
+type PassengerLookup = {
   id: string
 }
 
@@ -87,6 +109,18 @@ function isReviewRoute(value: string) {
   return (REVIEW_ROUTES as readonly string[]).includes(value)
 }
 
+function isReviewCountry(value: string) {
+  return (REVIEW_COUNTRIES as readonly string[]).includes(value)
+}
+
+function isReviewTravelMonth(value: string) {
+  return (REVIEW_TRAVEL_MONTHS as readonly string[]).includes(value)
+}
+
+function isReviewTravellerType(value: string) {
+  return (REVIEW_TRAVELLER_TYPES as readonly string[]).includes(value)
+}
+
 function getSupabaseConfig(env: Env) {
   const supabaseUrl = env.SUPABASE_URL
   const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY
@@ -114,21 +148,34 @@ export function validateReviewPayload(payload: ReviewPayload): ValidationResult<
   const name = cleanText(payload.name, REVIEW_NAME_MAX_LENGTH)
   const rating = parseRating(payload.rating)
   const route = cleanText(payload.route, REVIEW_ROUTE_MAX_LENGTH)
+  const country = cleanText(payload.country, REVIEW_COUNTRY_MAX_LENGTH)
+  const travelMonth = cleanText(payload.travelMonth, REVIEW_TRAVEL_MONTH_MAX_LENGTH)
+  const travellerType = cleanText(payload.travellerType, REVIEW_TRAVELLER_TYPE_MAX_LENGTH)
   const reviewText = cleanText(payload.reviewText, REVIEW_MAX_LENGTH)
-  const bookingReference = cleanText(payload.bookingReference, REVIEW_BOOKING_REFERENCE_MAX_LENGTH).toUpperCase()
+  const bookingEmail = cleanText(payload.bookingEmail, REVIEW_EMAIL_MAX_LENGTH).toLowerCase()
   const website = cleanText(payload.website, 200)
 
   if (!name) errors.push('Name is required.')
   if (rating < 1 || rating > 5) errors.push('Rating must be between 1 and 5.')
-  if (!reviewText) errors.push('Review text is required.')
-  if (typeof payload.name === 'string' && payload.name.trim().length > REVIEW_NAME_MAX_LENGTH) errors.push('Name is too long.')
   if (!route) errors.push('Route is required.')
   if (route && !isReviewRoute(route)) errors.push('Route must be Nairobi to Mombasa, Mombasa to Nairobi, or Round trip.')
+  if (!country) errors.push('Country is required.')
+  if (country && !isReviewCountry(country)) errors.push('Country must be selected from the list.')
+  if (!travelMonth) errors.push('Travel month is required.')
+  if (travelMonth && !isReviewTravelMonth(travelMonth)) errors.push('Travel month must be selected from the list.')
+  if (!travellerType) errors.push('Traveller type is required.')
+  if (travellerType && !isReviewTravellerType(travellerType)) errors.push('Traveller type must be selected from the list.')
+  if (!reviewText) errors.push('Review text is required.')
+  if (bookingEmail && !EMAIL_PATTERN.test(bookingEmail)) errors.push('Booking email must be a valid email address.')
+  if (typeof payload.name === 'string' && payload.name.trim().length > REVIEW_NAME_MAX_LENGTH) errors.push('Name is too long.')
   if (typeof payload.route === 'string' && payload.route.trim().length > REVIEW_ROUTE_MAX_LENGTH) errors.push('Route is too long.')
+  if (typeof payload.country === 'string' && payload.country.trim().length > REVIEW_COUNTRY_MAX_LENGTH) errors.push('Country is too long.')
+  if (typeof payload.travelMonth === 'string' && payload.travelMonth.trim().length > REVIEW_TRAVEL_MONTH_MAX_LENGTH) errors.push('Travel month is too long.')
+  if (typeof payload.travellerType === 'string' && payload.travellerType.trim().length > REVIEW_TRAVELLER_TYPE_MAX_LENGTH) errors.push('Traveller type is too long.')
   if (typeof payload.reviewText === 'string' && payload.reviewText.trim().length > REVIEW_MAX_LENGTH) errors.push('Review is too long.')
-  if (typeof payload.bookingReference === 'string' && payload.bookingReference.trim().length > REVIEW_BOOKING_REFERENCE_MAX_LENGTH) errors.push('Booking reference is too long.')
+  if (typeof payload.bookingEmail === 'string' && payload.bookingEmail.trim().length > REVIEW_EMAIL_MAX_LENGTH) errors.push('Booking email is too long.')
   if (website) errors.push('Review could not be submitted.')
-  if (SPAM_PATTERN.test(`${name} ${route} ${reviewText}`)) errors.push('Review appears to contain spam.')
+  if (SPAM_PATTERN.test(`${name} ${route} ${country} ${travelMonth} ${travellerType} ${reviewText}`)) errors.push('Review appears to contain spam.')
 
   if (errors.length > 0) return { ok: false, errors }
 
@@ -138,8 +185,11 @@ export function validateReviewPayload(payload: ReviewPayload): ValidationResult<
       name,
       rating,
       route,
+      country,
+      travelMonth,
+      travellerType,
       reviewText,
-      bookingReference,
+      bookingEmail,
     },
   }
 }
@@ -160,26 +210,26 @@ export function validateModerationPayload(payload: ModerationPayload): Validatio
   return { ok: true, value: { id, status: status as ModerationStatus } }
 }
 
-async function findBookingByReference(reference: string, baseUrl: string, serviceRoleKey: string, fetcher: Fetcher) {
-  if (!reference) return null
+async function findPassengerByEmail(email: string, baseUrl: string, serviceRoleKey: string, fetcher: Fetcher) {
+  if (!email) return null
 
   const query = new URLSearchParams({
     select: 'id',
-    reference: `eq.${reference}`,
+    email: `eq.${email}`,
     limit: '1',
   })
-  const response = await fetcher(`${baseUrl}/rest/v1/bookings?${query.toString()}`, {
+  const response = await fetcher(`${baseUrl}/rest/v1/passengers?${query.toString()}`, {
     method: 'GET',
     headers: supabaseHeaders(serviceRoleKey),
   })
 
-  if (!response.ok) throw new Error(`Supabase booking lookup failed: ${response.status}`)
-  const rows = (await response.json()) as BookingLookup[]
+  if (!response.ok) throw new Error(`Supabase passenger lookup failed: ${response.status}`)
+  const rows = (await response.json()) as PassengerLookup[]
   return rows[0] || null
 }
 
-function isMissingReviewVerificationColumnError(response: Response, body: string) {
-  return response.status === 400 && /(booking_reference|verified_booking|schema cache|column)/i.test(body)
+function isMissingReviewContextColumnError(response: Response, body: string) {
+  return response.status === 400 && /(country|travel_month|traveller_type|booking_email|verified_traveller|schema cache|column)/i.test(body)
 }
 
 async function getResponseBody(response: Response) {
@@ -190,7 +240,7 @@ async function getResponseBody(response: Response) {
   }
 }
 
-function reviewInsertBody(review: NormalizedReview, verifiedBooking: boolean, includeVerificationColumns: boolean) {
+function reviewInsertBody(review: NormalizedReview, verifiedTraveller: boolean, includeContextColumns: boolean) {
   const body: Record<string, string | number | boolean | null> = {
     name: review.name,
     rating: review.rating,
@@ -199,9 +249,12 @@ function reviewInsertBody(review: NormalizedReview, verifiedBooking: boolean, in
     status: 'pending',
   }
 
-  if (includeVerificationColumns) {
-    body.booking_reference = review.bookingReference || null
-    body.verified_booking = verifiedBooking
+  if (includeContextColumns) {
+    body.country = review.country
+    body.travel_month = review.travelMonth
+    body.traveller_type = review.travellerType
+    body.booking_email = review.bookingEmail || null
+    body.verified_traveller = verifiedTraveller
   }
 
   return body
@@ -209,8 +262,8 @@ function reviewInsertBody(review: NormalizedReview, verifiedBooking: boolean, in
 
 async function insertReview(
   review: NormalizedReview,
-  verifiedBooking: boolean,
-  includeVerificationColumns: boolean,
+  verifiedTraveller: boolean,
+  includeContextColumns: boolean,
   baseUrl: string,
   serviceRoleKey: string,
   fetcher: Fetcher,
@@ -221,7 +274,7 @@ async function insertReview(
       ...supabaseHeaders(serviceRoleKey),
       Prefer: 'return=minimal',
     },
-    body: JSON.stringify(reviewInsertBody(review, verifiedBooking, includeVerificationColumns)),
+    body: JSON.stringify(reviewInsertBody(review, verifiedTraveller, includeContextColumns)),
   })
 }
 
@@ -230,12 +283,12 @@ export async function submitReview(payload: ReviewPayload, env: Env = process.en
   if (!validation.ok) return validation
 
   const { baseUrl, serviceRoleKey } = getSupabaseConfig(env)
-  const matchedBooking = await findBookingByReference(validation.value.bookingReference, baseUrl, serviceRoleKey, fetcher)
-  let response = await insertReview(validation.value, Boolean(matchedBooking), true, baseUrl, serviceRoleKey, fetcher)
+  const matchedPassenger = await findPassengerByEmail(validation.value.bookingEmail, baseUrl, serviceRoleKey, fetcher)
+  let response = await insertReview(validation.value, Boolean(matchedPassenger), true, baseUrl, serviceRoleKey, fetcher)
 
   if (!response.ok) {
     const body = await getResponseBody(response)
-    if (isMissingReviewVerificationColumnError(response, body)) {
+    if (isMissingReviewContextColumnError(response, body)) {
       response = await insertReview(validation.value, false, false, baseUrl, serviceRoleKey, fetcher)
     }
   }
@@ -244,10 +297,10 @@ export async function submitReview(payload: ReviewPayload, env: Env = process.en
   return validation
 }
 
-async function fetchApprovedReviews(baseUrl: string, serviceRoleKey: string, fetcher: Fetcher, includeVerificationColumns: boolean) {
+async function fetchApprovedReviews(baseUrl: string, serviceRoleKey: string, fetcher: Fetcher, includeContextColumns: boolean) {
   const query = new URLSearchParams({
-    select: includeVerificationColumns
-      ? 'name,rating,route,review_text,created_at,verified_booking'
+    select: includeContextColumns
+      ? 'name,rating,route,country,travel_month,traveller_type,review_text,created_at,verified_traveller'
       : 'name,rating,route,review_text,created_at',
     status: 'eq.approved',
     order: 'created_at.desc',
@@ -262,13 +315,13 @@ async function fetchApprovedReviews(baseUrl: string, serviceRoleKey: string, fet
 export async function listApprovedReviews(env: Env = process.env, fetcher: Fetcher = fetch) {
   const { baseUrl, serviceRoleKey } = getSupabaseConfig(env)
   let response = await fetchApprovedReviews(baseUrl, serviceRoleKey, fetcher, true)
-  let includesVerificationColumns = true
+  let includesContextColumns = true
 
   if (!response.ok) {
     const body = await getResponseBody(response)
-    if (isMissingReviewVerificationColumnError(response, body)) {
+    if (isMissingReviewContextColumnError(response, body)) {
       response = await fetchApprovedReviews(baseUrl, serviceRoleKey, fetcher, false)
-      includesVerificationColumns = false
+      includesContextColumns = false
     }
   }
 
@@ -277,18 +330,24 @@ export async function listApprovedReviews(env: Env = process.env, fetcher: Fetch
     name: string
     rating: number
     route: string
+    country?: string | null
+    travel_month?: string | null
+    traveller_type?: string | null
     review_text: string
     created_at: string
-    verified_booking?: boolean | null
+    verified_traveller?: boolean | null
   }>
 
   return rows.map((row) => ({
     name: row.name,
     rating: row.rating,
     route: row.route,
+    country: includesContextColumns ? row.country || '' : '',
+    travelMonth: includesContextColumns ? row.travel_month || '' : '',
+    travellerType: includesContextColumns ? row.traveller_type || '' : '',
     reviewText: row.review_text,
     createdAt: row.created_at,
-    verifiedBooking: includesVerificationColumns && row.verified_booking === true,
+    verifiedTraveller: includesContextColumns && row.verified_traveller === true,
   }))
 }
 
@@ -366,4 +425,13 @@ export async function moderateReview(payload: ModerationPayload, env: Env = proc
   return validation
 }
 
-export { REVIEW_BOOKING_REFERENCE_MAX_LENGTH, REVIEW_MAX_LENGTH, REVIEW_NAME_MAX_LENGTH, REVIEW_ROUTE_MAX_LENGTH, REVIEW_ROUTES }
+export {
+  REVIEW_COUNTRIES,
+  REVIEW_EMAIL_MAX_LENGTH,
+  REVIEW_MAX_LENGTH,
+  REVIEW_NAME_MAX_LENGTH,
+  REVIEW_ROUTE_MAX_LENGTH,
+  REVIEW_ROUTES,
+  REVIEW_TRAVEL_MONTHS,
+  REVIEW_TRAVELLER_TYPES,
+}

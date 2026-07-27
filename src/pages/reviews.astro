@@ -3,10 +3,13 @@ import BaseLayout from '../layouts/BaseLayout.astro'
 import Header from '../components/Header.astro'
 import Footer from '../components/Footer.astro'
 import {
-  REVIEW_BOOKING_REFERENCE_MAX_LENGTH,
+  REVIEW_COUNTRIES,
+  REVIEW_EMAIL_MAX_LENGTH,
   REVIEW_MAX_LENGTH,
   REVIEW_NAME_MAX_LENGTH,
   REVIEW_ROUTES,
+  REVIEW_TRAVEL_MONTHS,
+  REVIEW_TRAVELLER_TYPES,
 } from '../config/reviews'
 ---
 
@@ -20,7 +23,7 @@ import {
       <div>
         <p class="eyebrow">Traveller Feedback</p>
         <h1>SafariRail Reviews</h1>
-        <p>Native reviews from travellers who used our SGR booking assistance. Verified labels appear only when a review matches a SafariRail booking reference.</p>
+        <p>Native reviews from travellers who used our SGR booking assistance, with travel context that helps future visitors judge what fits their trip.</p>
       </div>
     </section>
 
@@ -29,7 +32,7 @@ import {
         <p class="eyebrow">Recent Feedback</p>
         <div>
           <h2>What Travellers Say</h2>
-          <p>Reviews are moderated before publication. We show the route, rating, submission month, and whether the review is tied to a real SafariRail booking.</p>
+          <p>Reviews are moderated before publication. We show country, route, travel month, traveller type, rating, and whether the reviewer matched a stored booking email.</p>
         </div>
       </div>
       <div class="review-summary" id="review-summary" hidden></div>
@@ -43,7 +46,7 @@ import {
         <p class="eyebrow">Share Your Experience</p>
         <div>
           <h2>Submit a Review</h2>
-          <p>Add your booking reference if you have one. It is used only to verify the review and is never displayed publicly.</p>
+          <p>Add the email used for booking if you want us to verify the review. The email is private and never displayed publicly.</p>
         </div>
       </div>
       <form class="review-form" id="review-form">
@@ -52,14 +55,10 @@ import {
           <input id="review-name" name="name" type="text" maxlength={REVIEW_NAME_MAX_LENGTH} autocomplete="name" required />
         </div>
         <div class="field">
-          <label for="review-rating">Rating</label>
-          <select id="review-rating" name="rating" required>
-            <option value="">Select</option>
-            <option value="5">5 - Excellent</option>
-            <option value="4">4 - Good</option>
-            <option value="3">3 - Okay</option>
-            <option value="2">2 - Poor</option>
-            <option value="1">1 - Very poor</option>
+          <label for="review-country">Country</label>
+          <select id="review-country" name="country" required>
+            <option value="">Select country</option>
+            {REVIEW_COUNTRIES.map((country) => <option value={country}>{country}</option>)}
           </select>
         </div>
         <div class="field">
@@ -70,8 +69,33 @@ import {
           </select>
         </div>
         <div class="field">
-          <label for="review-booking-reference">Booking Reference</label>
-          <input id="review-booking-reference" name="bookingReference" type="text" maxlength={REVIEW_BOOKING_REFERENCE_MAX_LENGTH} placeholder="Optional" autocomplete="off" />
+          <label for="review-travel-month">Travel Month</label>
+          <select id="review-travel-month" name="travelMonth" required>
+            <option value="">Select month</option>
+            {REVIEW_TRAVEL_MONTHS.map((month) => <option value={month}>{month}</option>)}
+          </select>
+        </div>
+        <div class="field">
+          <label for="review-traveller-type">Traveller Type</label>
+          <select id="review-traveller-type" name="travellerType" required>
+            <option value="">Select type</option>
+            {REVIEW_TRAVELLER_TYPES.map((type) => <option value={type}>{type}</option>)}
+          </select>
+        </div>
+        <div class="field">
+          <label for="review-rating">Rating</label>
+          <select id="review-rating" name="rating" required>
+            <option value="">Select rating</option>
+            <option value="5">5 - Excellent</option>
+            <option value="4">4 - Good</option>
+            <option value="3">3 - Okay</option>
+            <option value="2">2 - Poor</option>
+            <option value="1">1 - Very poor</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="review-booking-email">Booking Email</label>
+          <input id="review-booking-email" name="bookingEmail" type="email" maxlength={REVIEW_EMAIL_MAX_LENGTH} placeholder="Optional" autocomplete="email" />
         </div>
         <div class="field review-text-field">
           <label for="review-text">Review</label>
@@ -94,9 +118,12 @@ import {
     name: string
     rating: number
     route: string
+    country?: string
+    travelMonth?: string
+    travellerType?: string
     reviewText: string
     createdAt?: string
-    verifiedBooking?: boolean
+    verifiedTraveller?: boolean
   }
 
   const reviewsList = document.querySelector('#reviews-list')
@@ -137,6 +164,10 @@ import {
     return dateFormatter.format(date)
   }
 
+  function compactContext(review: Review) {
+    return [review.country, review.route, review.travelMonth, review.travellerType].filter(Boolean).join(' / ')
+  }
+
   function renderSummary(reviews: Review[]) {
     if (!(reviewSummary instanceof HTMLElement)) return
     if (reviews.length === 0) {
@@ -146,7 +177,7 @@ import {
     }
 
     const average = reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
-    const verifiedCount = reviews.filter((review) => review.verifiedBooking).length
+    const verifiedCount = reviews.filter((review) => review.verifiedTraveller).length
     reviewSummary.hidden = false
     reviewSummary.innerHTML = `
       <article>
@@ -159,11 +190,10 @@ import {
       </article>
       <article>
         <strong>${verifiedCount}</strong>
-        <span>Verified bookings</span>
+        <span>Verified travellers</span>
       </article>
     `
   }
-
 
   async function readJsonResponse(response: Response, fallbackMessage: string) {
     const contentType = response.headers.get('content-type') || ''
@@ -191,9 +221,9 @@ import {
           </div>
           ${renderStars(review.rating)}
         </div>
+        <p class="review-context">${escapeHtml(compactContext(review) || review.route || 'Madaraka Express')}</p>
         <div class="review-badges">
-          <span>${escapeHtml(review.route || 'Madaraka Express')}</span>
-          ${review.verifiedBooking ? '<span>Verified booking</span>' : '<span>Moderated review</span>'}
+          ${review.verifiedTraveller ? '<span>Verified traveller</span>' : '<span>Moderated traveller review</span>'}
         </div>
         <p>${escapeHtml(review.reviewText)}</p>
       </article>
@@ -221,9 +251,12 @@ import {
     const data = new FormData(reviewForm)
     const payload = {
       name: data.get('name'),
-      rating: Number(data.get('rating') || 0),
+      country: data.get('country'),
       route: data.get('route'),
-      bookingReference: data.get('bookingReference'),
+      travelMonth: data.get('travelMonth'),
+      travellerType: data.get('travellerType'),
+      rating: Number(data.get('rating') || 0),
+      bookingEmail: data.get('bookingEmail'),
       reviewText: data.get('reviewText'),
       website: data.get('website'),
     }

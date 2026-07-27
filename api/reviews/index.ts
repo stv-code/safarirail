@@ -34,7 +34,7 @@ function getReviewErrorMessage(error: unknown) {
     return 'Review submissions are temporarily unavailable because rate limiting is not reachable.'
   }
 
-  if (/Supabase review insert failed|Supabase booking lookup failed/i.test(message)) {
+  if (/Supabase review insert failed|Supabase passenger lookup failed/i.test(message)) {
     return 'Review storage is temporarily unavailable. Please try again later.'
   }
 
