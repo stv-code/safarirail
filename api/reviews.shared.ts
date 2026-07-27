@@ -278,12 +278,20 @@ async function insertReview(
   })
 }
 
+async function safelyFindPassengerByEmail(email: string, baseUrl: string, serviceRoleKey: string, fetcher: Fetcher) {
+  try {
+    return await findPassengerByEmail(email, baseUrl, serviceRoleKey, fetcher)
+  } catch (error) {
+    console.error('Optional review traveller verification failed', error)
+    return null
+  }
+}
 export async function submitReview(payload: ReviewPayload, env: Env = process.env, fetcher: Fetcher = fetch): Promise<ValidationResult<NormalizedReview>> {
   const validation = validateReviewPayload(payload)
   if (!validation.ok) return validation
 
   const { baseUrl, serviceRoleKey } = getSupabaseConfig(env)
-  const matchedPassenger = await findPassengerByEmail(validation.value.bookingEmail, baseUrl, serviceRoleKey, fetcher)
+  const matchedPassenger = await safelyFindPassengerByEmail(validation.value.bookingEmail, baseUrl, serviceRoleKey, fetcher)
   let response = await insertReview(validation.value, Boolean(matchedPassenger), true, baseUrl, serviceRoleKey, fetcher)
 
   if (!response.ok) {

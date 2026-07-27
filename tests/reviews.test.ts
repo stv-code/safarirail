@@ -159,6 +159,33 @@ describe('review persistence', () => {
     expect(body.verified_traveller).toBe(true)
   })
 
+  it('still submits when optional booking email verification fails', async () => {
+    const fetcher = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (init?.method === 'GET' && url.includes('/rest/v1/passengers?')) {
+        return new Response(JSON.stringify({ message: 'permission denied for table passengers' }), { status: 403 })
+      }
+      if (init?.method === 'POST' && url.includes('/rest/v1/reviews')) {
+        return new Response(null, { status: 201 })
+      }
+      return new Response(null, { status: 500 })
+    })
+
+    const result = await submitReview(
+      {
+        ...validReview,
+        bookingEmail: 'amina@example.com',
+      },
+      env,
+      fetcher,
+    )
+
+    expect(result.ok).toBe(true)
+    const request = fetcher.mock.calls.find((call) => call[1]?.method === 'POST')?.[1]
+    const body = JSON.parse(String(request?.body)) as { booking_email: string; verified_traveller: boolean }
+    expect(body.booking_email).toBe('amina@example.com')
+    expect(body.verified_traveller).toBe(false)
+  })
   it('falls back to legacy review insert columns when context columns are missing', async () => {
     const fetcher = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
