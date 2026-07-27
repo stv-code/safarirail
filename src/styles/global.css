@@ -795,6 +795,71 @@ h1 {
   line-height: 1.7;
 }
 
+
+.review-proof-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.review-proof-strip a,
+.review-proof-strip > span {
+  min-height: 86px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 18px;
+  border: 1px solid #dfe5df;
+  border-radius: var(--radius);
+  background: var(--white);
+}
+
+.review-proof-strip a:hover {
+  border-color: var(--ochre);
+}
+
+.review-proof-strip strong {
+  color: var(--forest);
+  font-size: 0.92rem;
+}
+
+.review-proof-strip span span,
+.review-proof-strip a span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.review-proof-pending {
+  opacity: 0.72;
+}
+
+.review-policy-note {
+  margin-top: 14px;
+  padding: 20px 24px;
+  border: 1px solid #dfe5df;
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.64);
+}
+
+.review-policy-note h2 {
+  margin-bottom: 8px;
+  color: var(--forest);
+  font-family: Manrope, system-ui, sans-serif;
+  font-size: 0.92rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.review-policy-note p {
+  max-width: 900px;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
 .review-form {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1114,6 +1179,7 @@ h1 {
   .pricing-grid,
   .payment-grid,
   .review-summary,
+  .review-proof-strip,
   .reviews-list,
   .contact-grid,
   .footer-grid,
