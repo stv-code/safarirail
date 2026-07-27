@@ -402,6 +402,65 @@ describe('review API route', () => {
     expect(res.json<{ reviews: unknown[] }>().reviews).toEqual([])
   })
 
+  it('returns a service-role-key hint when Supabase rejects review inserts with 403', async () => {
+    process.env.SUPABASE_URL = env.SUPABASE_URL
+    process.env.SUPABASE_SERVICE_ROLE_KEY = env.SUPABASE_SERVICE_ROLE_KEY
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (init?.method === 'POST' && url.includes('/rest/v1/reviews')) {
+        return new Response(JSON.stringify({ message: 'permission denied for table reviews' }), { status: 403 })
+      }
+      return new Response(JSON.stringify([]), { status: 200 })
+    }) as typeof fetch
+    const res = createResponse()
+
+    try {
+      await reviewsHandler(
+        {
+          method: 'POST',
+          headers: {},
+          body: validReview,
+        },
+        res,
+      )
+    } finally {
+      globalThis.fetch = originalFetch
+    }
+
+    expect(res.statusCode).toBe(503)
+    expect(res.json<{ message: string }>().message).toContain('service role key')
+  })
+
+  it('returns a migration hint when Supabase rejects review inserts with 400', async () => {
+    process.env.SUPABASE_URL = env.SUPABASE_URL
+    process.env.SUPABASE_SERVICE_ROLE_KEY = env.SUPABASE_SERVICE_ROLE_KEY
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (init?.method === 'POST' && url.includes('/rest/v1/reviews')) {
+        return new Response(JSON.stringify({ message: 'null value in column country violates not-null constraint' }), { status: 400 })
+      }
+      return new Response(JSON.stringify([]), { status: 200 })
+    }) as typeof fetch
+    const res = createResponse()
+
+    try {
+      await reviewsHandler(
+        {
+          method: 'POST',
+          headers: {},
+          body: validReview,
+        },
+        res,
+      )
+    } finally {
+      globalThis.fetch = originalFetch
+    }
+
+    expect(res.statusCode).toBe(503)
+    expect(res.json<{ message: string }>().message).toContain('schema migration')
+  })
   it('returns a setup message when review submission storage is not configured', async () => {
     delete process.env.SUPABASE_URL
     delete process.env.SUPABASE_SERVICE_ROLE_KEY

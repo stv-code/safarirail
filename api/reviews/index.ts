@@ -34,8 +34,20 @@ function getReviewErrorMessage(error: unknown) {
     return 'Review submissions are temporarily unavailable because rate limiting is not reachable.'
   }
 
+  if (/Supabase review insert failed: 401|Supabase review insert failed: 403/i.test(message)) {
+    return 'Review storage rejected the request. Check that SUPABASE_SERVICE_ROLE_KEY is the service role key, not the anon key.'
+  }
+
+  if (/Supabase review insert failed: 400/i.test(message)) {
+    return 'Review storage rejected the review fields. Run the latest Supabase schema migration for the reviews table.'
+  }
+
+  if (/Supabase review insert failed: 404/i.test(message)) {
+    return 'Review storage table was not found. Run the Supabase schema setup for the reviews table.'
+  }
+
   if (/Supabase review insert failed|Supabase passenger lookup failed/i.test(message)) {
-    return 'Review storage is temporarily unavailable. Please try again later.'
+    return 'Review storage is temporarily unavailable. Check Vercel function logs for the Supabase response status.'
   }
 
   return 'We could not save your review right now. Please try again later.'

@@ -301,7 +301,10 @@ export async function submitReview(payload: ReviewPayload, env: Env = process.en
     }
   }
 
-  if (!response.ok) throw new Error(`Supabase review insert failed: ${response.status}`)
+  if (!response.ok) {
+    const body = await getResponseBody(response)
+    throw new Error(`Supabase review insert failed: ${response.status} ${body.slice(0, 500)}`)
+  }
   return validation
 }
 
@@ -333,7 +336,10 @@ export async function listApprovedReviews(env: Env = process.env, fetcher: Fetch
     }
   }
 
-  if (!response.ok) throw new Error(`Supabase review list failed: ${response.status}`)
+  if (!response.ok) {
+    const body = await getResponseBody(response)
+    throw new Error(`Supabase review list failed: ${response.status} ${body.slice(0, 500)}`)
+  }
   const rows = (await response.json()) as Array<{
     name: string
     rating: number
