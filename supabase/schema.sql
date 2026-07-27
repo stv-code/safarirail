@@ -67,7 +67,7 @@ comment on column public.reviews.country is 'Reviewer country selected during su
 comment on column public.reviews.travel_month is 'Month of travel selected during submission and safe to display publicly.';
 comment on column public.reviews.traveller_type is 'Traveller context selected during submission and safe to display publicly.';
 comment on column public.reviews.booking_email is 'Optional private email used only to verify a review against passenger records. Never expose publicly.';
-comment on column public.reviews.verified_traveller is 'True only when booking_email matched an existing SafariRail passenger email during submission.';
+comment on column public.reviews.verified_traveller is 'True only when booking_email matched an existing Safari Rail passenger email during submission.';
 comment on table public.review_moderation_events is 'Audit log for review moderation actions. Actor is a non-secret label and must never store admin tokens.';
 
 create index if not exists bookings_reference_idx on public.bookings(reference);

@@ -207,7 +207,7 @@ const faqs = [
     const message = data.get('message') || ''
     const body = [`Name: ${name}`, `Email: ${email}`, '', String(message)].join('\n')
 
-    window.location.href = `mailto:${supportEmail}?subject=SafariRail%20Message&body=${encodeURIComponent(body)}`
+    window.location.href = `mailto:${supportEmail}?subject=Safari Rail%20Message&body=${encodeURIComponent(body)}`
   })
 
   document.querySelectorAll('.pricing-select').forEach((button) => {

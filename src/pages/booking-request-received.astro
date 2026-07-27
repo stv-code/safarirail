@@ -4,8 +4,8 @@ import Header from '@/components/Header.astro'
 import Footer from '@/components/Footer.astro'
 import { bookingExperience, siteConfig, whatsappBaseUrl } from '@/config/business'
 
-const title = 'Booking Request Received | SafariRail'
-const description = 'Your SafariRail SGR booking assistance request has been received.'
+const title = 'Booking Request Received | Safari Rail'
+const description = 'Your Safari Rail SGR booking assistance request has been received.'
 ---
 
 <BaseLayout title={title} description={description} canonical={`${siteConfig.url}/booking-request-received`} robots="noindex, nofollow">
@@ -22,7 +22,7 @@ const description = 'Your SafariRail SGR booking assistance request has been rec
     <section class="status-section">
       <div class="status-panel">
         <div class="status-mark" aria-hidden="true">OK</div>
-        <p class="eyebrow">Your SafariRail reference</p>
+        <p class="eyebrow">Your Safari Rail reference</p>
         <strong class="status-reference" id="request-reference">Reference unavailable</strong>
         <h2>Continue on WhatsApp</h2>
         <p>Send us your reference so we can confirm availability and guide you through payment. {bookingExperience.responseTimeLabel}</p>
@@ -54,8 +54,8 @@ const description = 'Your SafariRail SGR booking assistance request has been rec
 
   if (whatsappLink instanceof HTMLAnchorElement) {
     const message = reference
-      ? `Hi SafariRail, my booking request reference is ${reference}. Please confirm availability and payment details.`
-      : 'Hi SafariRail, I submitted a booking request. Please help me confirm availability.'
+      ? `Hi Safari Rail, my booking request reference is ${reference}. Please confirm availability and payment details.`
+      : 'Hi Safari Rail, I submitted a booking request. Please help me confirm availability.'
     whatsappLink.href = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`
   }
 </script>

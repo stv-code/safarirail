@@ -288,7 +288,7 @@ export default async function handler(req: BookingRequest, res: BookingResponse)
 
     await persistBooking(validation.value)
 
-    const whatsappMessage = `Hi SafariRail, my secure booking request reference is ${validation.value.reference}. Please confirm availability and payment details.`
+    const whatsappMessage = `Hi Safari Rail, my secure booking request reference is ${validation.value.reference}. Please confirm availability and payment details.`
     sendJson(res, 201, {
       bookingReference: validation.value.reference,
       whatsappUrl: `https://wa.me/${siteConfig.whatsappNumber}?text=${encodeURIComponent(whatsappMessage)}`,

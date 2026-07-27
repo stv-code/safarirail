@@ -1,6 +1,6 @@
 # Privacy Retention Notes
 
-SafariRail collects passport or ID details only to request and reconcile SGR booking assistance.
+Safari Rail collects passport or ID details only to request and reconcile SGR booking assistance.
 
 Retention rule: delete or anonymize passenger identity details within 30 days after journey completion unless a legal dispute, fraud report, chargeback, or regulatory request requires longer retention.
 

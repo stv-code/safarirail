@@ -1,5 +1,5 @@
 export const siteConfig = {
-  name: 'SafariRail',
+  name: 'Safari Rail',
   url: 'https://safarirail.co.ke',
   supportEmail: 'support@safarirail.co.ke',
   whatsappNumber: '254769869503',
