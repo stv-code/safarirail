@@ -8,6 +8,9 @@ export const siteConfig = {
   officialKrcBookingUrl: 'https://metickets.krc.co.ke/index.php',
   officialKrcFaqUrl: 'https://metickets.krc.co.ke/faqs.php',
   privacyPolicyUrl: '/privacy',
+  facebookUrl: 'https://www.facebook.com/share/1FwYSRg5Td/',
+  instagramUrl: 'https://www.instagram.com/safarirail/',
+  instagramHandle: '@safarirail',
 } as const
 
 export const whatsappBaseUrl = `https://wa.me/${siteConfig.whatsappNumber}`
