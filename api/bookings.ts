@@ -267,7 +267,7 @@ export async function persistBooking(booking: NormalizedBooking, env: Env = proc
 function buildBookingWhatsappUrl(booking: NormalizedBooking, persisted: boolean) {
   const intro = persisted
     ? `Hi Safari Rail, my secure booking request reference is ${booking.reference}. Please confirm availability and payment details.`
-    : `Hi Safari Rail, my booking request reference is ${booking.reference}. The website asked me to continue here so you can confirm availability and payment details.`
+    : `Hi Safari Rail, my booking request reference is ${booking.reference}. Please confirm availability and payment details.`
 
   const details = [
     intro,
@@ -277,9 +277,10 @@ function buildBookingWhatsappUrl(booking: NormalizedBooking, persisted: boolean)
     `Departure: ${booking.departure}`,
     `Passengers: ${booking.adults} adult(s), ${booking.children} child(ren)`,
     `Name: ${booking.passenger.fullName}`,
+    `Passport/ID: ${booking.passenger.passportId}`,
+    `Gender: ${booking.passenger.gender}`,
     `Country: ${booking.passenger.countryCode}`,
     `Email: ${booking.passenger.email}`,
-    'I can share passport/ID details privately when requested.',
   ].join('\n')
 
   return `https://wa.me/${siteConfig.whatsappNumber}?text=${encodeURIComponent(details)}`
@@ -348,7 +349,7 @@ export default async function handler(req: BookingRequest, res: BookingResponse)
       sendJson(res, 202, {
         bookingReference: validation.value.reference,
         whatsappUrl: buildBookingWhatsappUrl(validation.value, false),
-        message: 'Your request details are valid, but we could not save them automatically. Continue on WhatsApp so we can complete the booking manually.',
+        message: 'Continue on WhatsApp so we can confirm availability and payment details.',
         persistenceWarning: true,
       })
       return

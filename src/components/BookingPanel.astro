@@ -251,13 +251,14 @@ import { bookingExperience, departures, formatKes, siteConfig, ticketClasses } f
         throw new Error(`${result.message || 'Submission failed.'}${details}`)
       }
 
-      const bookingReference = typeof result.bookingReference === 'string' ? result.bookingReference : ''
       if (typeof result.whatsappUrl === 'string') {
-        sessionStorage.setItem('safarirail-booking-whatsapp-url', result.whatsappUrl)
+        window.location.assign(result.whatsappUrl)
+        return
       }
+
+      const bookingReference = typeof result.bookingReference === 'string' ? result.bookingReference : ''
       const requestPage = new URL('/booking-request-received', window.location.origin)
       requestPage.searchParams.set('reference', bookingReference)
-      if (result.persistenceWarning === true) requestPage.searchParams.set('handoff', 'whatsapp')
       window.location.assign(requestPage)
       return
     } catch (error) {

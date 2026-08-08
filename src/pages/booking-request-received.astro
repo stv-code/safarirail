@@ -44,25 +44,18 @@ const description = 'Your Safari Rail SGR booking assistance request has been re
 <script is:inline define:vars={{ whatsappNumber: siteConfig.whatsappNumber }}>
   const params = new URLSearchParams(window.location.search)
   const rawReference = params.get('reference') || ''
-  const handoff = params.get('handoff') === 'whatsapp'
   const reference = /^SR-[A-Z0-9-]{8,40}$/.test(rawReference) ? rawReference : ''
   const referenceOutput = document.querySelector('#request-reference')
   const whatsappLink = document.querySelector('#request-whatsapp')
-  const guidance = document.querySelector('#request-guidance')
 
   if (reference && referenceOutput) {
     referenceOutput.textContent = reference
   }
 
   if (whatsappLink instanceof HTMLAnchorElement) {
-    const storedWhatsappUrl = sessionStorage.getItem('safarirail-booking-whatsapp-url')
     const message = reference
       ? `Hi Safari Rail, my booking request reference is ${reference}. Please confirm availability and payment details.`
       : 'Hi Safari Rail, I submitted a booking request. Please help me confirm availability.'
-    whatsappLink.href = storedWhatsappUrl || `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`
-  }
-
-  if (handoff && guidance) {
-    guidance.textContent = 'Your request details are valid, but automatic saving did not complete. Please continue on WhatsApp now so we can capture the booking manually and confirm availability.'
+    whatsappLink.href = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`
   }
 </script>
