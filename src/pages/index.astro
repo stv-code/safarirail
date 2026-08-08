@@ -18,6 +18,39 @@ const faqs = [
   ['What is your refund and cancellation policy?', 'We do not handle refunds. Cancellation is strictly handled by Kenya Railways in person at the station.'],
   ['Do children travel for free?', 'Children under 3 years travel free. Children aged 3-11 pay a reduced child fare.'],
 ]
+
+const stationPhotos = [
+  {
+    src: '/station/station-ticket-office-17.jpg',
+    alt: 'Mombasa SGR station exterior with entrance signage',
+    label: 'Station entrance',
+  },
+  {
+    src: '/station/station-ticket-office-22.jpg',
+    alt: 'Ticket office entrance at the SGR station',
+    label: 'Ticket office',
+  },
+  {
+    src: '/station/station-ticket-office-25.jpg',
+    alt: 'Self-service ticket machines inside the SGR station',
+    label: 'Ticket machines',
+  },
+  {
+    src: '/station/station-ticket-office-14.jpg',
+    alt: 'Wide exterior view of the SGR station building',
+    label: 'Station concourse',
+  },
+  {
+    src: '/station/station-ticket-office-06.jpg',
+    alt: 'Station access road and rail platform area',
+    label: 'Access area',
+  },
+  {
+    src: '/station/station-ticket-office-24.jpg',
+    alt: 'Front view of the SGR station ticket office',
+    label: 'Office front',
+  },
+]
 ---
 
 <BaseLayout>
@@ -101,6 +134,24 @@ const faqs = [
         <p>
           After booking, your details are sent to your email, WhatsApp, or Telegram. You must use that message to physically print your ticket at the station before boarding.
         </p>
+      </div>
+    </section>
+
+    <section class="section station-gallery-section">
+      <div class="section-heading">
+        <p class="eyebrow">Station Photos</p>
+        <div>
+          <h2>Know where to print your ticket.</h2>
+          <p>Recent station and ticket office photos help travellers recognize the pickup points before boarding.</p>
+        </div>
+      </div>
+      <div class="station-gallery">
+        {stationPhotos.map((photo) => (
+          <figure>
+            <img src={photo.src} alt={photo.alt} loading="lazy" decoding="async" />
+            <figcaption>{photo.label}</figcaption>
+          </figure>
+        ))}
       </div>
     </section>
 

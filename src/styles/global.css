@@ -60,7 +60,7 @@ select {
   color: var(--white);
   background:
     linear-gradient(90deg, rgba(16, 37, 33, 0.88) 0%, rgba(16, 37, 33, 0.56) 48%, rgba(16, 37, 33, 0.18) 100%),
-    url('/hero-rail.jpg') center / cover;
+    url('/station/station-ticket-office-17.jpg') center / cover;
   display: flex;
   flex-direction: column;
 }
@@ -651,7 +651,7 @@ h1 {
   color: var(--white);
   background:
     linear-gradient(0deg, rgba(16, 37, 33, 0.88), rgba(16, 37, 33, 0.1)),
-    url('/feature-wildlife.jpg') center / cover;
+    url('/station/station-ticket-office-22.jpg') center / cover;
 }
 
 .image-feature div {
@@ -661,6 +661,44 @@ h1 {
 .image-feature p {
   color: rgba(255, 255, 255, 0.78);
   font-size: 1.04rem;
+}
+
+.station-gallery-section {
+  padding-bottom: clamp(56px, 8vw, 92px);
+}
+
+.station-gallery {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.station-gallery figure {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid #dfe5df;
+  border-radius: var(--radius);
+  background: var(--white);
+}
+
+.station-gallery img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  display: block;
+  object-fit: cover;
+}
+
+.station-gallery figcaption {
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  color: var(--forest);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .payment-section {
@@ -1002,7 +1040,7 @@ h1 {
   color: var(--white);
   background:
     linear-gradient(90deg, rgba(16, 37, 33, 0.9), rgba(16, 37, 33, 0.42)),
-    url('/hero-rail.jpg') center / cover;
+    url('/station/station-ticket-office-17.jpg') center / cover;
 }
 
 .subhero > div:last-child {
@@ -1181,6 +1219,7 @@ h1 {
   .review-summary,
   .review-proof-strip,
   .reviews-list,
+  .station-gallery,
   .contact-grid,
   .footer-grid,
   .info-strip {
@@ -1366,13 +1405,13 @@ h1 {
   color: var(--white);
   background:
     linear-gradient(90deg, rgba(16, 37, 33, 0.92), rgba(16, 37, 33, 0.34)),
-    url('/hero-rail.jpg') center / cover;
+    url('/station/station-ticket-office-17.jpg') center / cover;
 }
 
 .status-hero-confirmed {
   background:
     linear-gradient(90deg, rgba(16, 37, 33, 0.9), rgba(16, 37, 33, 0.28)),
-    url('/feature-wildlife.jpg') center / cover;
+    url('/station/station-ticket-office-22.jpg') center / cover;
 }
 
 .status-hero-content {
