@@ -52,6 +52,7 @@ type ApiResponse = {
   whatsappUrl?: string
   message?: string
   errors?: string[]
+  persistenceWarning?: boolean
 }
 
 const RATE_LIMIT_WINDOW_MS = 60_000
@@ -263,6 +264,52 @@ export async function persistBooking(booking: NormalizedBooking, env: Env = proc
   }
 }
 
+function buildBookingWhatsappUrl(booking: NormalizedBooking, persisted: boolean) {
+  const intro = persisted
+    ? `Hi Safari Rail, my secure booking request reference is ${booking.reference}. Please confirm availability and payment details.`
+    : `Hi Safari Rail, my booking request reference is ${booking.reference}. The website asked me to continue here so you can confirm availability and payment details.`
+
+  const details = [
+    intro,
+    '',
+    `Class: ${booking.travelClass}`,
+    `Travel date: ${booking.travelDate}`,
+    `Departure: ${booking.departure}`,
+    `Passengers: ${booking.adults} adult(s), ${booking.children} child(ren)`,
+    `Name: ${booking.passenger.fullName}`,
+    `Country: ${booking.passenger.countryCode}`,
+    `Email: ${booking.passenger.email}`,
+    'I can share passport/ID details privately when requested.',
+  ].join('\n')
+
+  return `https://wa.me/${siteConfig.whatsappNumber}?text=${encodeURIComponent(details)}`
+}
+
+function getSupabaseHost(env: Env) {
+  const supabaseUrl = env.SUPABASE_URL
+  if (!supabaseUrl) return 'missing'
+  try {
+    return new URL(supabaseUrl).host || 'invalid'
+  } catch {
+    return 'invalid'
+  }
+}
+
+function getErrorDiagnostics(error: unknown) {
+  if (!(error instanceof Error)) return { message: 'Unknown error' }
+  const cause = error.cause
+  const diagnostics: { message: string; cause?: string; code?: string } = {
+    message: error.message,
+  }
+
+  if (cause instanceof Error) diagnostics.cause = cause.message
+  if (cause && typeof cause === 'object' && 'code' in cause && typeof cause.code === 'string') {
+    diagnostics.code = cause.code
+  }
+
+  return diagnostics
+}
+
 export default async function handler(req: BookingRequest, res: BookingResponse) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST')
@@ -271,10 +318,14 @@ export default async function handler(req: BookingRequest, res: BookingResponse)
   }
 
   const ip = getClientIp(req)
-  const rateLimit = await rateLimiter.check(ip)
-  if (rateLimit.limited) {
-    sendJson(res, 429, { message: 'Too many booking attempts. Please wait a minute and try again.' })
-    return
+  try {
+    const rateLimit = await rateLimiter.check(ip)
+    if (rateLimit.limited) {
+      sendJson(res, 429, { message: 'Too many booking attempts. Please wait a minute and try again.' })
+      return
+    }
+  } catch (error) {
+    console.error('[bookings] rate limiter failed open', error instanceof Error ? error.message : 'Unknown rate limiter error')
   }
 
   try {
@@ -286,12 +337,26 @@ export default async function handler(req: BookingRequest, res: BookingResponse)
       return
     }
 
-    await persistBooking(validation.value)
+    try {
+      await persistBooking(validation.value)
+    } catch (error) {
+      console.error('[bookings] persistence failed', {
+        reference: validation.value.reference,
+        supabaseHost: getSupabaseHost(process.env),
+        error: getErrorDiagnostics(error),
+      })
+      sendJson(res, 202, {
+        bookingReference: validation.value.reference,
+        whatsappUrl: buildBookingWhatsappUrl(validation.value, false),
+        message: 'Your request details are valid, but we could not save them automatically. Continue on WhatsApp so we can complete the booking manually.',
+        persistenceWarning: true,
+      })
+      return
+    }
 
-    const whatsappMessage = `Hi Safari Rail, my secure booking request reference is ${validation.value.reference}. Please confirm availability and payment details.`
     sendJson(res, 201, {
       bookingReference: validation.value.reference,
-      whatsappUrl: `https://wa.me/${siteConfig.whatsappNumber}?text=${encodeURIComponent(whatsappMessage)}`,
+      whatsappUrl: buildBookingWhatsappUrl(validation.value, true),
     })
   } catch (error) {
     console.error(error instanceof Error ? error.message : 'Unknown booking submission error')

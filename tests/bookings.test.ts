@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { calculateBookingTotal } from '../src/config/business'
-import { encryptPassportId, persistBooking, validatePayload, type NormalizedBooking } from '../api/bookings'
+import bookingHandler, { encryptPassportId, persistBooking, validatePayload, type NormalizedBooking } from '../api/bookings'
 
 const encryptionEnv = {
   PASSPORT_ID_ENCRYPTION_KEY: Buffer.alloc(32, 1).toString('base64'),
@@ -154,5 +154,48 @@ describe('booking persistence', () => {
         fetcher,
       ),
     ).rejects.not.toThrow('P1234567')
+  })
+})
+
+describe('booking API handler', () => {
+  it('keeps valid booking leads moving to WhatsApp when persistence fails', async () => {
+    const originalEnv = { ...process.env }
+    process.env.SUPABASE_URL = 'https://example.supabase.co'
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-key'
+    process.env.PASSPORT_ID_ENCRYPTION_KEY = encryptionEnv.PASSPORT_ID_ENCRYPTION_KEY
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('database unavailable', { status: 500 })))
+
+    const headers: Record<string, string> = {}
+    let responseBody = ''
+    const response = {
+      statusCode: 0,
+      setHeader(name: string, value: string) {
+        headers[name] = value
+      },
+      end(body?: string) {
+        responseBody = String(body || '')
+      },
+    }
+
+    await bookingHandler(
+      {
+        method: 'POST',
+        headers: { 'x-forwarded-for': '203.0.113.202' },
+        body: validPayload,
+      },
+      response,
+    )
+
+    process.env = originalEnv
+    vi.unstubAllGlobals()
+
+    expect(response.statusCode).toBe(202)
+    expect(headers['Content-Type']).toContain('application/json')
+
+    const body = JSON.parse(responseBody) as { bookingReference: string; whatsappUrl: string; persistenceWarning: boolean; message: string }
+    expect(body.bookingReference).toMatch(/^SR-/)
+    expect(body.persistenceWarning).toBe(true)
+    expect(body.message).toContain('Continue on WhatsApp')
+    expect(decodeURIComponent(body.whatsappUrl)).toContain('The website asked me to continue here')
   })
 })

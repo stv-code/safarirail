@@ -2,8 +2,8 @@
 dist/
 .next/
 node_modules/
-.env*.local
-.env.local
-.vercel
 *.tsbuildinfo
 astro-dev*.log
+
+.vercel
+.env*
