@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro'
 import Header from '../components/Header.astro'
 import Footer from '../components/Footer.astro'
+import { siteConfig } from '../config/business'
 import {
   REVIEW_COUNTRIES,
   REVIEW_EMAIL_MAX_LENGTH,
@@ -44,14 +45,14 @@ import {
           <strong>Google</strong>
           <span>View our Business Profile</span>
         </a>
-        <span class="review-proof-pending">
+        <a href={siteConfig.instagramUrl} target="_blank" rel="noopener noreferrer">
           <strong>Instagram</strong>
-          <span>Safari Rail</span>
-        </span>
-        <span class="review-proof-pending">
+          <span>{siteConfig.instagramHandle}</span>
+        </a>
+        <a href={siteConfig.facebookUrl} target="_blank" rel="noopener noreferrer">
           <strong>Facebook</strong>
           <span>Safari Rail</span>
-        </span>
+        </a>
         <a href="https://wa.me/254769869503" target="_blank" rel="noopener noreferrer">
           <strong>WhatsApp</strong>
           <span>Message +254 769 869 503</span>
