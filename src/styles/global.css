@@ -463,6 +463,31 @@ h1 {
   font-weight: 700;
 }
 
+.passenger-list {
+  grid-column: span 4;
+  display: grid;
+  gap: 14px;
+}
+
+.passenger-entry {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #dfe5df;
+  border-radius: var(--radius);
+  background: var(--white);
+}
+
+.passenger-entry h3 {
+  grid-column: span 4;
+  margin: 0;
+  color: var(--forest);
+  font-size: 0.88rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
 .form-status[data-status='error'] {
   color: #a73322;
 }
@@ -1320,10 +1345,16 @@ h1 {
   .booking-summary,
   .privacy-consent,
   .form-status,
+  .passenger-list,
+  .passenger-entry h3,
   .contact-form .field:nth-child(3),
   .review-text-field,
   .review-form .form-status {
     grid-column: span 1;
+  }
+
+  .passenger-entry {
+    grid-template-columns: 1fr;
   }
 
   .booking-summary h2 {

@@ -1,6 +1,8 @@
 ---
 import countries from '@/data/countries.json'
 import { bookingExperience, departures, formatKes, siteConfig, ticketClasses } from '@/config/business'
+
+const countryOptions = countries.map((country) => ({ code: country['alpha-2'], name: country.name }))
 ---
 
 <form class="booking-panel booking-panel-full" id="booking-panel">
@@ -57,29 +59,7 @@ import { bookingExperience, departures, formatKes, siteConfig, ticketClasses } f
 
   <fieldset class="form-step" data-step="1">
     <legend>Passengers</legend>
-  <div class="field">
-    <label for="name">Full Name (as per Passport)</label>
-    <input id="name" name="name" type="text" autocomplete="name" minlength="2" maxlength="120" placeholder="e.g. John Michael Smith" required />
-  </div>
-  <div class="field">
-    <label for="passport">Passport / ID Number</label>
-    <input id="passport" name="passport" type="text" autocomplete="off" minlength="3" maxlength="80" required />
-  </div>
-  <div class="field">
-    <label for="gender">Gender</label>
-    <select id="gender" name="gender" required>
-      <option value="">Select</option>
-      <option value="Male">Male</option>
-      <option value="Female">Female</option>
-    </select>
-  </div>
-  <div class="field">
-    <label for="country">Country of Origin</label>
-    <select id="country" name="country" required>
-      <option value="">Select Country</option>
-      {countries.map((country) => <option value={country['alpha-2']}>{country.name}</option>)}
-    </select>
-  </div>
+    <div class="passenger-list" id="passenger-list"></div>
   </fieldset>
 
   <fieldset class="form-step" data-step="2">
@@ -116,7 +96,7 @@ import { bookingExperience, departures, formatKes, siteConfig, ticketClasses } f
 </form>
 
 
-<script>
+<script define:vars={{ countryOptions }}>
   const form = document.querySelector('#booking-panel')
   const dateInput = document.querySelector('#date')
   const classInput = document.querySelector('#class')
@@ -130,7 +110,9 @@ import { bookingExperience, departures, formatKes, siteConfig, ticketClasses } f
   const nextButton = document.querySelector('#booking-next')
   const stepElements = Array.from(document.querySelectorAll('[data-step]'))
   const stepIndicators = Array.from(document.querySelectorAll('[data-step-indicator]'))
+  const passengerList = document.querySelector('#passenger-list')
   let currentStep = 0
+
 
   function getSelectedClass() {
     if (!(classInput instanceof HTMLSelectElement)) return null
@@ -154,6 +136,103 @@ import { bookingExperience, departures, formatKes, siteConfig, ticketClasses } f
     totalOutput.textContent = `KES ${calculateTotal().toLocaleString()}`
   }
 
+  function getPassengerCount() {
+    const adults = adultsInput instanceof HTMLSelectElement ? Number(adultsInput.value || 1) : 1
+    const children = childrenInput instanceof HTMLSelectElement ? Number(childrenInput.value || 0) : 0
+    return Math.max(1, adults + children)
+  }
+
+  function getPassengerType(index: number) {
+    const adults = adultsInput instanceof HTMLSelectElement ? Number(adultsInput.value || 1) : 1
+    return index < adults ? 'Adult' : 'Child'
+  }
+
+  function renderCountryOptions(selectedCode = '') {
+    return [
+      '<option value="">Select Country</option>',
+      ...countryOptions.map((country: { code: string; name: string }) => {
+        const selected = country.code === selectedCode ? ' selected' : ''
+        return `<option value="${country.code}"${selected}>${country.name}</option>`
+      }),
+    ].join('')
+  }
+
+  function getExistingPassengers() {
+    if (!(passengerList instanceof HTMLElement)) return []
+    return Array.from(passengerList.querySelectorAll('.passenger-entry')).map((entry) => {
+      const fullNameInput = entry.querySelector('[name="passengerFullName"]')
+      const passportInput = entry.querySelector('[name="passengerPassportId"]')
+      const genderInput = entry.querySelector('[name="passengerGender"]')
+      const countryInput = entry.querySelector('[name="passengerCountryCode"]')
+      return {
+        fullName: fullNameInput instanceof HTMLInputElement ? fullNameInput.value : '',
+        passportId: passportInput instanceof HTMLInputElement ? passportInput.value : '',
+        gender: genderInput instanceof HTMLSelectElement ? genderInput.value : '',
+        countryCode: countryInput instanceof HTMLSelectElement ? countryInput.value : '',
+      }
+    })
+  }
+
+  function renderPassengerFields() {
+    if (!(passengerList instanceof HTMLElement)) return
+    const existingPassengers = getExistingPassengers()
+    const passengerCount = getPassengerCount()
+    passengerList.innerHTML = Array.from({ length: passengerCount }, (_, index) => {
+      const passenger = existingPassengers[index] || { fullName: '', passportId: '', gender: '', countryCode: '' }
+      const passengerNumber = index + 1
+      const passengerType = getPassengerType(index)
+      return `
+        <section class="passenger-entry" aria-labelledby="passenger-${passengerNumber}-heading">
+          <h3 id="passenger-${passengerNumber}-heading">${passengerType} ${passengerNumber}</h3>
+          <div class="field">
+            <label for="passenger-${passengerNumber}-name">Full Name (as per Passport)</label>
+            <input id="passenger-${passengerNumber}-name" name="passengerFullName" type="text" autocomplete="name" minlength="2" maxlength="120" placeholder="e.g. John Michael Smith" value="${passenger.fullName.replaceAll('"', '&quot;')}" required />
+          </div>
+          <div class="field">
+            <label for="passenger-${passengerNumber}-passport">Passport / ID Number</label>
+            <input id="passenger-${passengerNumber}-passport" name="passengerPassportId" type="text" autocomplete="off" minlength="3" maxlength="80" value="${passenger.passportId.replaceAll('"', '&quot;')}" required />
+          </div>
+          <div class="field">
+            <label for="passenger-${passengerNumber}-gender">Gender</label>
+            <select id="passenger-${passengerNumber}-gender" name="passengerGender" required>
+              <option value="">Select</option>
+              <option value="Male"${passenger.gender === 'Male' ? ' selected' : ''}>Male</option>
+              <option value="Female"${passenger.gender === 'Female' ? ' selected' : ''}>Female</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="passenger-${passengerNumber}-country">Country of Origin</label>
+            <select id="passenger-${passengerNumber}-country" name="passengerCountryCode" required>
+              ${renderCountryOptions(passenger.countryCode)}
+            </select>
+          </div>
+        </section>
+      `
+    }).join('')
+  }
+
+  function getCountryName(countryCode: string) {
+    return countryOptions.find((country: { code: string; name: string }) => country.code === countryCode)?.name || countryCode
+  }
+
+  function getPassengerPayload() {
+    if (!(passengerList instanceof HTMLElement)) return []
+    return Array.from(passengerList.querySelectorAll('.passenger-entry')).map((entry) => {
+      const fullNameInput = entry.querySelector('[name="passengerFullName"]')
+      const passportInput = entry.querySelector('[name="passengerPassportId"]')
+      const genderInput = entry.querySelector('[name="passengerGender"]')
+      const countryInput = entry.querySelector('[name="passengerCountryCode"]')
+      const countryCode = countryInput instanceof HTMLSelectElement ? countryInput.value : ''
+      return {
+        fullName: fullNameInput instanceof HTMLInputElement ? fullNameInput.value : '',
+        passportId: passportInput instanceof HTMLInputElement ? passportInput.value : '',
+        gender: genderInput instanceof HTMLSelectElement ? genderInput.value : '',
+        countryCode,
+        countryName: getCountryName(countryCode),
+      }
+    })
+  }
+
   function setCurrentStep(nextStep: number) {
     currentStep = Math.max(0, Math.min(nextStep, stepElements.length - 1))
     stepElements.forEach((stepElement) => {
@@ -167,6 +246,7 @@ import { bookingExperience, departures, formatKes, siteConfig, ticketClasses } f
     if (prevButton instanceof HTMLButtonElement) prevButton.disabled = currentStep === 0
     if (nextButton instanceof HTMLButtonElement) {
       nextButton.hidden = currentStep === stepElements.length - 1
+      nextButton.style.display = currentStep === stepElements.length - 1 ? 'none' : ''
     }
   }
 
@@ -199,9 +279,16 @@ import { bookingExperience, departures, formatKes, siteConfig, ticketClasses } f
   }
 
   classInput?.addEventListener('change', updateTotal)
-  adultsInput?.addEventListener('change', updateTotal)
-  childrenInput?.addEventListener('change', updateTotal)
+  adultsInput?.addEventListener('change', () => {
+    updateTotal()
+    renderPassengerFields()
+  })
+  childrenInput?.addEventListener('change', () => {
+    updateTotal()
+    renderPassengerFields()
+  })
   updateTotal()
+  renderPassengerFields()
   setCurrentStep(0)
 
   prevButton?.addEventListener('click', () => setCurrentStep(currentStep - 1))
@@ -217,17 +304,20 @@ import { bookingExperience, departures, formatKes, siteConfig, ticketClasses } f
     if (!form.reportValidity()) return
 
     const data = new FormData(form)
+    const passengers = getPassengerPayload()
+    const primaryPassenger = passengers[0] || { fullName: '', passportId: '', gender: '', countryCode: '', countryName: '' }
     const payload = {
       travelClass: data.get('class'),
       travelDate: data.get('date'),
       departure: data.get('departure'),
       adults: Number(data.get('adults') || 1),
       children: Number(data.get('children') || 0),
-      fullName: data.get('name'),
-      passportId: data.get('passport'),
-      gender: data.get('gender'),
-      countryCode: data.get('country'),
-      countryName: getCountryLabel(String(data.get('country') || '')),
+      fullName: primaryPassenger.fullName,
+      passportId: primaryPassenger.passportId,
+      gender: primaryPassenger.gender,
+      countryCode: primaryPassenger.countryCode,
+      countryName: primaryPassenger.countryName,
+      passengers,
       email: data.get('email'),
       consent: data.get('consent') === 'on',
     }
@@ -252,6 +342,10 @@ import { bookingExperience, departures, formatKes, siteConfig, ticketClasses } f
       }
 
       if (typeof result.whatsappUrl === 'string') {
+        form.reset()
+        renderPassengerFields()
+        updateTotal()
+        setCurrentStep(0)
         window.location.assign(result.whatsappUrl)
         return
       }

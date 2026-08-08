@@ -16,6 +16,30 @@ const validPayload = {
   passportId: 'P1234567',
   gender: 'Female',
   countryCode: 'KE',
+  countryName: 'Kenya',
+  passengers: [
+    {
+      fullName: 'Amina Patel',
+      passportId: 'P1234567',
+      gender: 'Female',
+      countryCode: 'KE',
+      countryName: 'Kenya',
+    },
+    {
+      fullName: 'Jean Dupont',
+      passportId: 'FR123456',
+      gender: 'Male',
+      countryCode: 'FR',
+      countryName: 'France',
+    },
+    {
+      fullName: 'Mia Patel',
+      passportId: 'US987654',
+      gender: 'Female',
+      countryCode: 'US',
+      countryName: 'United States',
+    },
+  ],
   email: 'amina@example.com',
   consent: true,
 }
@@ -35,6 +59,8 @@ describe('booking validation', () => {
 
     expect(result.value.reference).toBe('SR-TEST-00000001')
     expect(result.value.passenger.email).toBe('amina@example.com')
+    expect(result.value.passenger.countryName).toBe('Kenya')
+    expect(result.value.passengers).toHaveLength(3)
     expect(result.value.totalAmount).toBe(5250)
   })
 
@@ -45,6 +71,7 @@ describe('booking validation', () => {
       departure: 'Midnight',
       adults: 7,
       children: -1,
+      passengers: [],
       email: 'not-an-email',
       consent: false,
     })
@@ -198,9 +225,14 @@ describe('booking API handler', () => {
     expect(body.message).toContain('Continue on WhatsApp')
     const whatsappMessage = decodeURIComponent(body.whatsappUrl)
     expect(whatsappMessage).toContain('Please confirm availability and payment details.')
+    expect(whatsappMessage).toContain('Passenger 1')
     expect(whatsappMessage).toContain('Name: Amina Patel')
     expect(whatsappMessage).toContain('Passport/ID: P1234567')
     expect(whatsappMessage).toContain('Gender: Female')
+    expect(whatsappMessage).toContain('Country: Kenya')
+    expect(whatsappMessage).toContain('Passenger 2')
+    expect(whatsappMessage).toContain('Name: Jean Dupont')
+    expect(whatsappMessage).toContain('Country: France')
     expect(whatsappMessage).toContain('Email: amina@example.com')
   })
 })

@@ -18,10 +18,12 @@ type BookingPayload = {
   departure?: unknown
   adults?: unknown
   children?: unknown
+  passengers?: unknown
   fullName?: unknown
   passportId?: unknown
   gender?: unknown
   countryCode?: unknown
+  countryName?: unknown
   email?: unknown
   consent?: unknown
 }
@@ -43,8 +45,16 @@ export type NormalizedBooking = {
     passportId: string
     gender: Gender
     countryCode: string
+    countryName: string
     email: string
   }
+  passengers: Array<{
+    fullName: string
+    passportId: string
+    gender: Gender
+    countryCode: string
+    countryName: string
+  }>
 }
 
 type ApiResponse = {
@@ -105,6 +115,34 @@ function cleanCode(value: unknown) {
 function parseInteger(value: unknown, fallback: number) {
   const parsed = Number(value)
   return Number.isInteger(parsed) ? parsed : fallback
+}
+
+function normalizePassengerPayload(payload: BookingPayload) {
+  const rawPassengers = Array.isArray(payload.passengers) ? payload.passengers : []
+  const sourcePassengers = rawPassengers.length > 0
+    ? rawPassengers
+    : [
+        {
+          fullName: payload.fullName,
+          passportId: payload.passportId,
+          gender: payload.gender,
+          countryCode: payload.countryCode,
+          countryName: payload.countryName,
+        },
+      ]
+
+  return sourcePassengers.map((passenger) => {
+    const value = passenger && typeof passenger === 'object' ? passenger as Record<string, unknown> : {}
+    const countryCode = cleanCode(value.countryCode)
+    const countryName = cleanText(value.countryName, 80)
+    return {
+      fullName: cleanText(value.fullName, 120),
+      passportId: cleanText(value.passportId, 80),
+      gender: cleanText(value.gender, 12),
+      countryCode,
+      countryName: countryName || countryCode,
+    }
+  })
 }
 
 function generateBookingReference() {
@@ -176,13 +214,12 @@ export function validatePayload(payload: BookingPayload, referenceFactory = gene
   const travelClass = cleanText(payload.travelClass, 32)
   const departure = cleanText(payload.departure, 32)
   const travelDate = cleanText(payload.travelDate, 10)
-  const fullName = cleanText(payload.fullName, 120)
-  const passportId = cleanText(payload.passportId, 80)
-  const gender = cleanText(payload.gender, 12)
-  const countryCode = cleanCode(payload.countryCode)
   const email = cleanText(payload.email, 254).toLowerCase()
   const adults = parseInteger(payload.adults, 1)
   const children = parseInteger(payload.children, 0)
+  const expectedPassengerCount = adults + children
+  const passengers = normalizePassengerPayload(payload)
+  const primaryPassenger = passengers[0] || { fullName: '', passportId: '', gender: '', countryCode: '', countryName: '' }
 
   if (!isTicketClassLabel(travelClass)) errors.push('Select a valid class.')
   if (!isDeparture(departure)) errors.push('Select a valid departure.')
@@ -196,14 +233,23 @@ export function validatePayload(payload: BookingPayload, referenceFactory = gene
   }
   if (adults < bookingLimits.minAdults || adults > bookingLimits.maxAdults) errors.push('Adults must be between 1 and 6.')
   if (children < bookingLimits.minChildren || children > bookingLimits.maxChildren) errors.push('Children must be between 0 and 4.')
-  if (fullName.length < 2) errors.push('Full name is required.')
-  if (passportId.length < 3) errors.push('Passport or ID number is required.')
-  if (!isGender(gender)) errors.push('Select a valid gender.')
-  if (!/^[A-Z]{2}$/.test(countryCode)) errors.push('Select a valid country.')
+  if (passengers.length !== expectedPassengerCount) errors.push('Enter details for every traveller.')
+  passengers.forEach((passenger, index) => {
+    const passengerLabel = passengers.length > 1 ? `Passenger ${index + 1}: ` : ''
+    if (passenger.fullName.length < 2) errors.push(`${passengerLabel}Full name is required.`)
+    if (passenger.passportId.length < 3) errors.push(`${passengerLabel}Passport or ID number is required.`)
+    if (!isGender(passenger.gender)) errors.push(`${passengerLabel}Select a valid gender.`)
+    if (!/^[A-Z]{2}$/.test(passenger.countryCode)) errors.push(`${passengerLabel}Select a valid country.`)
+  })
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push('Enter a valid email address.')
   if (payload.consent !== true) errors.push('Consent is required before submitting.')
 
-  if (errors.length > 0 || !isTicketClassLabel(travelClass) || !isDeparture(departure) || !isGender(gender)) return { ok: false, errors }
+  if (
+    errors.length > 0 ||
+    !isTicketClassLabel(travelClass) ||
+    !isDeparture(departure) ||
+    passengers.some((passenger) => !isGender(passenger.gender))
+  ) return { ok: false, errors }
 
   return {
     ok: true,
@@ -216,12 +262,20 @@ export function validatePayload(payload: BookingPayload, referenceFactory = gene
       children,
       totalAmount: calculateBookingTotal(travelClass, adults, children),
       passenger: {
-        fullName,
-        passportId,
-        gender,
-        countryCode,
+        fullName: primaryPassenger.fullName,
+        passportId: primaryPassenger.passportId,
+        gender: primaryPassenger.gender as Gender,
+        countryCode: primaryPassenger.countryCode,
+        countryName: primaryPassenger.countryName,
         email,
       },
+      passengers: passengers.map((passenger) => ({
+        fullName: passenger.fullName,
+        passportId: passenger.passportId,
+        gender: passenger.gender as Gender,
+        countryCode: passenger.countryCode,
+        countryName: passenger.countryName,
+      })),
     },
   }
 }
@@ -269,6 +323,14 @@ function buildBookingWhatsappUrl(booking: NormalizedBooking, persisted: boolean)
     ? `Hi Safari Rail, my secure booking request reference is ${booking.reference}. Please confirm availability and payment details.`
     : `Hi Safari Rail, my booking request reference is ${booking.reference}. Please confirm availability and payment details.`
 
+  const passengerDetails = booking.passengers.map((passenger, index) => [
+    `Passenger ${index + 1}`,
+    `Name: ${passenger.fullName}`,
+    `Passport/ID: ${passenger.passportId}`,
+    `Gender: ${passenger.gender}`,
+    `Country: ${passenger.countryName}`,
+  ].join('\n')).join('\n\n')
+
   const details = [
     intro,
     '',
@@ -276,11 +338,9 @@ function buildBookingWhatsappUrl(booking: NormalizedBooking, persisted: boolean)
     `Travel date: ${booking.travelDate}`,
     `Departure: ${booking.departure}`,
     `Passengers: ${booking.adults} adult(s), ${booking.children} child(ren)`,
-    `Name: ${booking.passenger.fullName}`,
-    `Passport/ID: ${booking.passenger.passportId}`,
-    `Gender: ${booking.passenger.gender}`,
-    `Country: ${booking.passenger.countryCode}`,
     `Email: ${booking.passenger.email}`,
+    '',
+    passengerDetails,
   ].join('\n')
 
   return `https://wa.me/${siteConfig.whatsappNumber}?text=${encodeURIComponent(details)}`
