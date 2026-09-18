@@ -3,6 +3,7 @@ import BaseLayout from '../layouts/BaseLayout.astro'
 import Header from '../components/Header.astro'
 import BookingPanel from '../components/BookingPanel.astro'
 import Footer from '../components/Footer.astro'
+import { guides } from '../data/guides'
 import { bookingExperience, formatKes, paymentMethods, siteConfig, ticketClasses, whatsappBaseUrl } from '../config/business'
 
 const infoStrip = [
@@ -20,88 +21,58 @@ const faqs = [
 ]
 
 const stationPhotos = [
-  {
-    src: '/station/station-ticket-office-17.jpg',
-    alt: 'Mombasa SGR station exterior with entrance signage',
-    label: 'Station entrance',
-  },
-  {
-    src: '/station/station-ticket-office-22.jpg',
-    alt: 'Ticket office entrance at the SGR station',
-    label: 'Ticket office',
-  },
-  {
-    src: '/station/station-ticket-office-25.jpg',
-    alt: 'Self-service ticket machines inside the SGR station',
-    label: 'Ticket machines',
-  },
-  {
-    src: '/station/station-ticket-office-14.jpg',
-    alt: 'Wide exterior view of the SGR station building',
-    label: 'Station concourse',
-  },
-  {
-    src: '/station/station-ticket-office-06.jpg',
-    alt: 'Station access road and rail platform area',
-    label: 'Access area',
-  },
-  {
-    src: '/station/station-ticket-office-24.jpg',
-    alt: 'Front view of the SGR station ticket office',
-    label: 'Office front',
-  },
+  { src: '/optimized/station-17.webp', alt: 'Entrance to Nairobi Terminus', label: 'Nairobi Terminus' },
+  { src: '/optimized/station-22.webp', alt: 'SGR station ticket office', label: 'Ticket collection' },
+  { src: '/optimized/station-25.webp', alt: 'Ticket machines at the SGR station', label: 'Before you board' },
 ]
+
 ---
 
 <BaseLayout>
-  <main>
+  <main id="main-content">
     <section class="hero">
       <Header />
-      <div class="hero-content">
-        <p class="eyebrow">Madaraka Express - Nairobi to Mombasa</p>
-        <h1>Experience Kenya <em>by Rail</em></h1>
-        <p class="hero-copy">
-          The hassle-free way for tourists to book SGR tickets. No M-Pesa? No Kenyan bank account? No problem.
-        </p>
-        <p class="hero-caveat">
-          Independent third-party assistance. Prefer to book directly? Use the official KRC site.
-        </p>
-        <div class="hero-actions">
-          <a class="primary-button" href="#pricing">View Prices</a>
-          <a class="ghost-button" href="#how-it-works">How It Works</a>
+      <div class="journey-hero">
+        <div class="hero-content">
+          <p class="eyebrow">Kenya, one train journey away</p>
+          <h1>Your SGR journey.<br /><em>Our local support.</em></h1>
+          <p class="hero-copy">Nairobi to Mombasa, made easier. We help travellers book Madaraka Express tickets, even without M-Pesa or a Kenyan bank account.</p>
+          <div class="hero-actions">
+            <a class="primary-button" href="#booking">Plan my journey <span aria-hidden="true">&#8599;</span></a>
+            <a class="ghost-button" href={whatsappBaseUrl} target="_blank" rel="noopener noreferrer">Talk on WhatsApp</a>
+          </div>
+          <p class="hero-caveat">Independent booking assistance. Clear service fees. Pay after availability is confirmed.</p>
+          <div class="route-line" aria-label="Nairobi to Mombasa"><span>Nairobi</span><i aria-hidden="true"></i><span>Mombasa</span></div>
         </div>
-      </div>
-      <div class="hero-bottom" id="booking">
-        <section class="booking-flow" id="how-it-works" aria-labelledby="how-it-works-title">
-          <div class="section-heading compact-flow-heading">
-            <p class="eyebrow">How It Works</p>
-            <div>
-              <h2 id="how-it-works-title">Request first. Pay after we confirm.</h2>
-              <p>{bookingExperience.responseTimeLabel}</p>
-            </div>
-          </div>
-          <div class="process-grid">
-            {bookingExperience.steps.map((step, index) => (
-              <article>
-                <span>{index + 1}</span>
-                <p>{step}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-        <BookingPanel />
+        <figure class="hero-photo">
+          <img src="/optimized/nairobi-terminus.webp" srcset="/optimized/station-17.webp 800w, /optimized/nairobi-terminus.webp 1280w" sizes="(max-width: 760px) 100vw, 48vw" alt="Nairobi Terminus, the starting point for your SGR journey to Mombasa" width="1280" height="960" fetchpriority="high" />
+          <figcaption><span>Start your next chapter</span><strong>Nairobi Terminus, Kenya</strong></figcaption>
+          <div class="journey-tag"><span>From</span><strong>KES {formatKes(ticketClasses[0].adultPrice)}</strong><span>per adult &middot; Economy, including our fee</span></div>
+        </figure>
       </div>
     </section>
 
-    <section class="info-strip">
+    <section class="info-strip" aria-label="Booking benefits">
       {infoStrip.map((item) => <span>{item}</span>)}
+    </section>
+
+    <section class="section journey-intro" id="how-it-works">
+      <div class="section-heading">
+        <p class="eyebrow">A little help. A great journey.</p>
+        <div><h2>You plan the adventure.<br />We help with the tickets.</h2><p>Speak to a local team, understand the total cost, and travel with your booking details ready.</p></div>
+      </div>
+      <div class="process-grid">
+        <article><span>01</span><h3>Tell us your plans</h3><p>Choose your travel date, class and passengers. Send a request online or start with a WhatsApp conversation.</p></article>
+        <article><span>02</span><h3>Confirm, then pay</h3><p>We check seats and confirm the fare, service fee and payment instructions before you pay.</p></article>
+        <article><span>03</span><h3>Get ready to go</h3><p>Receive your booking details and ticket-printing guidance. We help you understand what happens next.</p></article>
+      </div>
     </section>
 
     <section class="section pricing-section" id="pricing">
       <div class="section-heading">
-        <p class="eyebrow">Ticket Classes</p>
+        <p class="eyebrow">Your seat, your choice</p>
         <div>
-          <h2>Choose Your Journey</h2>
+          <h2>Find your kind of comfortable.</h2>
           <p>All prices include our booking assistance fee. Select the class that suits your travel style.</p>
         </div>
       </div>
@@ -111,7 +82,7 @@ const stationPhotos = [
             {tier.badge && <p class="pricing-badge">{tier.badge}</p>}
             <h3>{tier.label}</h3>
             <div class="price"><sup>KES</sup> {formatKes(tier.adultPrice)}</div>
-            <p class="price-unit">per adult</p>
+            <p class="price-unit">per adult &middot; assistance fee included</p>
             <div class="fare-breakdown">
               <strong>Fare Breakdown</strong>
               <span>Adult: {formatKes(tier.adultPrice)} (ticket {formatKes(tier.ticketAdult)} + service {formatKes(tier.service)})</span>
@@ -121,16 +92,21 @@ const stationPhotos = [
             <ul>
               {tier.features.map((feature) => <li>{feature}</li>)}
             </ul>
-            <button class="primary-button pricing-select" type="button" data-ticket-class={tier.label}>Submit Booking Request</button>
+            <button class="primary-button pricing-select" type="button" data-ticket-class={tier.label}>Choose {tier.label} <span aria-hidden="true">&#8599;</span></button>
           </article>
         ))}
       </div>
     </section>
 
+    <section class="section booking-section" id="booking">
+      <div class="section-heading"><p class="eyebrow">Let's get you there</p><div><h2>Start your booking request.</h2><p>No payment is taken here. We confirm seat availability first. Need a different route? <a class="text-link" href={whatsappBaseUrl}>Talk to us on WhatsApp.</a></p></div></div>
+      <BookingPanel />
+    </section>
+
     <section class="image-feature">
       <div>
         <p class="eyebrow">Ticket delivery</p>
-        <h2>We send the M-Pesa message and ticket number.</h2>
+        <h2>A little guidance, right to the platform.</h2>
         <p>
           After booking, your details are sent to your email, WhatsApp, or Telegram. You must use that message to physically print your ticket at the station before boarding.
         </p>
@@ -145,22 +121,27 @@ const stationPhotos = [
         <p class="eyebrow">Station Photos</p>
         <div>
           <h2>Know where to print your ticket.</h2>
-          <p>Recent station and ticket office photos help travellers recognize the pickup points before boarding.</p>
+          <p>A look at the station and ticket collection facilities before you travel.</p>
         </div>
       </div>
       <div class="station-gallery">
         {stationPhotos.map((photo) => (
           <figure>
-            <img src={photo.src} alt={photo.alt} loading="lazy" decoding="async" />
+            <img src={photo.src} alt={photo.alt} width="800" height="600" loading="lazy" decoding="async" />
             <figcaption>{photo.label}</figcaption>
           </figure>
         ))}
       </div>
     </section>
 
+    <section class="section guides-section" id="travel-guides">
+      <div class="section-heading"><p class="eyebrow">Before you set off</p><div><h2>A smoother trip starts here.</h2><p>Practical answers for planning your first train journey in Kenya.</p></div></div>
+      <div class="guide-grid">{guides.map((guide, index) => <a class="guide-card" href={`/guides/${guide.slug}`}><span class="guide-number">0{index + 1} / Travel guide</span><h3>{guide.title}</h3><p>{guide.description}</p><span class="text-link">Read the guide <span aria-hidden="true">&#8599;</span></span></a>)}</div>
+    </section>
+
     <section class="section payment-section">
       <div class="section-heading">
-        <p class="eyebrow">Secure Payment</p>
+        <p class="eyebrow">Payment options</p>
         <div>
           <h2>Choose your payment method</h2>
           <p>Submit your booking request first, then follow the payment instructions we confirm. Tickets are sent after payment is received. User is responsible for any transfer delays.</p>
@@ -180,7 +161,7 @@ const stationPhotos = [
       <div class="section-heading">
         <p class="eyebrow">Common Questions</p>
         <div>
-          <h2>Frequently Asked</h2>
+          <h2>Good questions. Clear answers.</h2>
           <p>Everything you need to know before booking with us.</p>
         </div>
       </div>
@@ -214,10 +195,7 @@ const stationPhotos = [
           <h3>WhatsApp</h3>
           <a href={whatsappBaseUrl} target="_blank" rel="noopener noreferrer">{siteConfig.whatsappDisplay}</a>
         </div>
-        <div class="fraud-alert">
-          <strong>Fraud Alert:</strong>
-          If you suspect fraudulent activity in our name, contact DCI Kenya, call 911, or visit the nearest police station immediately.
-        </div>
+
       </div>
       <form class="contact-form" id="contact-form">
         <div class="field">
@@ -232,16 +210,17 @@ const stationPhotos = [
           <label for="message">Message</label>
           <textarea id="message" name="message" placeholder="I need help with a group booking for..." required></textarea>
         </div>
-        <button class="primary-button" type="submit">Send Message</button>
+        <p class="contact-note">This opens your email app with your message. For a quicker conversation, use WhatsApp.</p>
+        <button class="primary-button" type="submit">Open email draft</button>
       </form>
     </section>
 
     <section class="cta-section">
       <div>
-        <p class="eyebrow">Booking Confirmed?</p>
-        <h2>Your M-Pesa ticket message will be sent after payment is confirmed.</h2>
+        <p class="eyebrow">From city to coast</p>
+        <h2>Your next adventure starts with a conversation.</h2>
       </div>
-      <a class="primary-button" href="#booking">Submit Booking Request</a>
+      <a class="primary-button" href="#booking">Plan my journey</a>
     </section>
   </main>
   <Footer />

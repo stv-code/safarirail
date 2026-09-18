@@ -3,20 +3,19 @@ const links = [
   { href: '/#how-it-works', label: 'How It Works' },
   { href: '/#pricing', label: 'Classes' },
   { href: '/reviews', label: 'Reviews' },
-  { href: '/#faq', label: 'FAQ' },
+  { href: '/#travel-guides', label: 'Travel guides' },
   { href: '/#contact', label: 'Contact' },
 ]
 ---
 
-<div class="disclaimer-ticker" role="note" aria-label="Important disclaimer">
-  <div class="ticker-track">
-    <span>Independent third-party booking assistance. Official KRC booking remains available at metickets.krc.co.ke.</span>
-  </div>
+<div class="disclaimer-ticker" role="note">
+  <span>Independent booking assistance &middot; Not affiliated with Kenya Railways.</span>
+  <a href="https://metickets.krc.co.ke" target="_blank" rel="noopener noreferrer">Official KRC booking &#8599;</a>
 </div>
 
 <header class="site-header">
   <a class="brand" href="/" aria-label="Safari Rail home">
-    <img class="brand-logo" src="/safarirail.png" alt="Safari Rail" width="1680" height="1024" decoding="async" />
+    <img class="brand-logo" src="/logo.webp" alt="Safari Rail" width="160" height="160" decoding="async" /><span class="brand-wordmark">Safari<span>Rail</span><small>BOOK SGR. EXPLORE MORE.</small></span>
   </a>
 
   <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="primary-navigation">
@@ -28,7 +27,7 @@ const links = [
   </nav>
 
   <a class="header-action" href="/#booking">
-    Book
+    Book a journey
   </a>
 </header>
 
@@ -41,5 +40,16 @@ const links = [
     const isOpen = navToggle.getAttribute('aria-expanded') === 'true'
     navToggle.setAttribute('aria-expanded', String(!isOpen))
     primaryNavigation.dataset.open = String(!isOpen)
+  })
+  primaryNavigation?.querySelectorAll('a').forEach((link) => link.addEventListener('click', () => {
+    navToggle?.setAttribute('aria-expanded', 'false')
+    if (primaryNavigation instanceof HTMLElement) primaryNavigation.dataset.open = 'false'
+  }))
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && navToggle?.getAttribute('aria-expanded') === 'true') {
+      navToggle.setAttribute('aria-expanded', 'false')
+      if (primaryNavigation instanceof HTMLElement) primaryNavigation.dataset.open = 'false'
+      if (navToggle instanceof HTMLElement) navToggle.focus()
+    }
   })
 </script>

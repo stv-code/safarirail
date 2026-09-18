@@ -1,0 +1,46 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import Header from '../../components/Header.astro'
+import Footer from '../../components/Footer.astro'
+import { guides } from '../../data/guides'
+import { siteConfig, whatsappBaseUrl } from '../../config/business'
+export function getStaticPaths() {
+  return guides.map(guide => ({ params: { slug: guide.slug }, props: { guide } }))
+}
+const { guide } = Astro.props
+const breadcrumbs = {
+  '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: siteConfig.url },
+    { '@type': 'ListItem', position: 2, name: guide.title, item: `${siteConfig.url}/guides/${guide.slug}` },
+  ],
+}
+---
+<BaseLayout title={`${guide.title} | Safari Rail`} description={guide.description}>
+  <main id="main-content">
+    <section class="subhero">
+      <Header />
+      <div>
+        <nav class="breadcrumb" aria-label="Breadcrumb"><a href="/">Home</a><span aria-hidden="true">/</span><span>Travel guide</span></nav>
+        <p class="eyebrow">The Safari Rail travel guide</p>
+        <h1>{guide.title}</h1>
+        <p>{guide.description}</p>
+      </div>
+    </section>
+    <div class="section article-layout">
+      <article class="guide-body">
+        {guide.sections.map(section => <section><h2>{section.heading}</h2>{section.paragraphs.map(paragraph => <p>{paragraph}</p>)}{'items' in section && section.items && <ul>{section.items.map(item => <li>{item}</li>)}</ul>}</section>)}
+        <p>For the operator’s current booking options and travel rules, visit <a href={siteConfig.officialKrcUrl} target="_blank" rel="noopener noreferrer">Kenya Railways’ official booking website</a>. Safari Rail is an independent assistance service.</p>
+      </article>
+      <aside class="guide-aside">
+        <p class="eyebrow">A local helping hand</p><h2>Let’s plan your journey.</h2><p>Tell us your dates and passengers. We’ll check the options before you pay.</p>
+        <a class="primary-button" href="/#booking">Request booking assistance</a>
+        <a class="text-link" href={whatsappBaseUrl} target="_blank" rel="noopener noreferrer">Ask us on WhatsApp ↗</a>
+        <h3 style="margin-top:32px">More travel guides</h3>
+        {guides.filter(item => item.slug !== guide.slug).map(item => <a class="text-link" href={`/guides/${item.slug}`}>{item.title}</a>)}
+      </aside>
+    </div>
+  </main>
+  <Footer />
+  <script is:inline type="application/ld+json" set:html={JSON.stringify(breadcrumbs).replace(/</g, '\\u003c')} />
+</BaseLayout>

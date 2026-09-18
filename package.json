@@ -7,14 +7,19 @@
     "build": "astro build",
     "preview": "astro preview",
     "check": "astro check",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:site": "node scripts/check-site.cjs"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.9",
     "@astrojs/sitemap": "^3.7.3",
     "@types/node": "^20",
     "astro": "^7.0.7",
+    "playwright": "^1.63.0",
     "typescript": "^5",
     "vitest": "^4.1.10"
+  },
+  "dependencies": {
+    "@vercel/analytics": "^2.0.1"
   }
 }

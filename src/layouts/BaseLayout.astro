@@ -1,143 +1,65 @@
 ---
 import '../styles/global.css'
+import '../styles/refresh.css'
+import Analytics from '@vercel/analytics/astro'
 import { siteConfig } from '@/config/site'
 
 const {
-  title = 'Safari Rail | SGR Booking Assistance for Tourists in Kenya',
-  description = 'Hassle-free Madaraka Express SGR ticket booking assistance for tourists visiting Kenya. No M-Pesa? No problem. Economy, First Class & Premium.',
-  canonical = siteConfig.url,
+  title = 'SGR Booking for Tourists | Nairobi to Mombasa | Safari Rail',
+  description = 'Book your Nairobi to Mombasa SGR journey with independent assistance from Safari Rail. No M-Pesa? Compare fares, request seats and get help on WhatsApp.',
+  canonical = new URL(Astro.url.pathname, siteConfig.url).href,
   robots = 'index, follow',
 } = Astro.props
-
-const socialImage = `${siteConfig.url}/safarirail.png`
+const socialImage = `${siteConfig.url}/social-card.jpg`
+const structuredData = {
+  '@context': 'https://schema.org', '@type': 'TravelAgency',
+  '@id': `${siteConfig.url}/#business`, name: siteConfig.name,
+  description: 'Independent SGR booking assistance for travellers in Kenya. Not affiliated with Kenya Railways.',
+  url: siteConfig.url, logo: `${siteConfig.url}/logo.webp`, image: socialImage,
+  email: siteConfig.supportEmail, telephone: siteConfig.whatsappDisplay,
+  areaServed: { '@type': 'Country', name: 'Kenya' },
+  sameAs: [siteConfig.instagramUrl, siteConfig.facebookUrl],
+}
 ---
-
 <!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
     <meta name="description" content={description} />
     <meta name="robots" content={robots} />
     <link rel="canonical" href={canonical} />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
+    <meta property="og:site_name" content={siteConfig.name} />
     <meta property="og:type" content="website" />
+    <meta property="og:locale" content="en_KE" />
     <meta property="og:image" content={socialImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Safari Rail - independent SGR booking assistance" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={socialImage} />
-    <meta name="theme-color" content="#12342f" />
-    <title>{title}</title>
-    <link rel="preconnect" href="https://images.unsplash.com" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <meta name="theme-color" content="#173c32" />
+    <script is:inline type="application/ld+json" set:html={JSON.stringify(structuredData).replace(/</g, '\\u003c')} />
   </head>
   <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
     <slot />
-    <div class="disclaimer-modal" id="disclaimer-modal" aria-hidden="true">
-      <div class="disclaimer-card" role="dialog" aria-modal="true" aria-labelledby="disclaimer-title">
-        <p class="eyebrow">Important notice</p>
-        <h2 id="disclaimer-title">Safari Rail is not the official SGR or Kenya Railways website.</h2>
-        <p>
-          Safari Rail is an independent third-party booking assistance service. We are not affiliated with, endorsed by, or representing Kenya Railways Corporation.
-        </p>
-        <p>
-          You can also book directly through the official Kenya Railways ticketing website or at the station.
-        </p>
-        <div class="disclaimer-actions">
-          <a class="ghost-dark-button" href={siteConfig.officialKrcUrl} target="_blank" rel="noopener noreferrer">Go to official site</a>
-          <button class="primary-button" id="accept-disclaimer" type="button">I understand and accept</button>
-        </div>
-      </div>
-    </div>
-    <script is:inline type="application/ld+json" set:html={JSON.stringify({
-      '@context': 'https://schema.org',
-      '@type': 'TravelAgency',
-      name: siteConfig.name,
-      url: siteConfig.url,
-      email: siteConfig.supportEmail,
-      areaServed: 'Kenya',
-    })} />
-    <script>
-      const disclaimerModal = document.querySelector('#disclaimer-modal')
-      const acceptDisclaimer = document.querySelector('#accept-disclaimer')
-      const acceptedKey = 'safarirail-third-party-disclaimer-accepted'
-      let previousFocus: Element | null = null
-
-      function getFocusableElements() {
-        if (!(disclaimerModal instanceof HTMLElement)) return []
-        return Array.from(
-          disclaimerModal.querySelectorAll('a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'),
-        )
+    <script is:inline>
+      window.webAnalyticsBeforeSend = (event) => {
+        const url = new URL(event.url)
+        url.search = ''
+        url.hash = ''
+        return { ...event, url: url.href }
       }
-
-      function hasAcceptedDisclaimer() {
-        try {
-          return localStorage.getItem(acceptedKey) === 'true'
-        } catch {
-          return false
-        }
-      }
-
-      function saveAcceptedDisclaimer() {
-        try {
-          localStorage.setItem(acceptedKey, 'true')
-        } catch {
-          // Storage can be unavailable in privacy-restricted contexts.
-        }
-      }
-
-      function openDisclaimer() {
-        if (!(disclaimerModal instanceof HTMLElement)) return
-        previousFocus = document.activeElement
-        disclaimerModal.setAttribute('aria-hidden', 'false')
-        document.documentElement.classList.add('modal-open')
-        const focusableElements = getFocusableElements()
-        if (focusableElements[0] instanceof HTMLElement) focusableElements[0].focus()
-      }
-
-      function closeDisclaimer() {
-        if (!(disclaimerModal instanceof HTMLElement)) return
-        disclaimerModal.setAttribute('aria-hidden', 'true')
-        document.documentElement.classList.remove('modal-open')
-        if (previousFocus instanceof HTMLElement) previousFocus.focus()
-      }
-
-      if (disclaimerModal instanceof HTMLElement && !hasAcceptedDisclaimer()) {
-        openDisclaimer()
-      }
-
-      acceptDisclaimer?.addEventListener('click', () => {
-        saveAcceptedDisclaimer()
-        closeDisclaimer()
-      })
-
-      disclaimerModal?.addEventListener('keydown', (event) => {
-        if (!(event instanceof KeyboardEvent)) return
-        if (event.key === 'Escape') {
-          event.preventDefault()
-          closeDisclaimer()
-          return
-        }
-        if (event.key !== 'Tab') return
-
-        const focusableElements = getFocusableElements()
-        const first = focusableElements[0]
-        const last = focusableElements[focusableElements.length - 1]
-        if (!(first instanceof HTMLElement) || !(last instanceof HTMLElement)) return
-
-        if (event.shiftKey && document.activeElement === first) {
-          event.preventDefault()
-          last.focus()
-        } else if (!event.shiftKey && document.activeElement === last) {
-          event.preventDefault()
-          first.focus()
-        }
-      })
     </script>
+    <Analytics />
   </body>
 </html>

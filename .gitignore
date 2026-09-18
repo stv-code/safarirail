@@ -7,3 +7,4 @@ astro-dev*.log
 
 .vercel
 .env*
+.artifacts/
