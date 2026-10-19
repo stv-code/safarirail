@@ -291,7 +291,7 @@ import { bookingExperience, departures, formatKes, siteConfig, ticketClasses } f
     setCurrentStep(currentStep + 1)
   })
 
-  form?.addEventListener('submit', async (event) => {
+  form?.addEventListener('submit', (event) => {
     event.preventDefault()
 
     if (!(form instanceof HTMLFormElement)) return
@@ -299,63 +299,33 @@ import { bookingExperience, departures, formatKes, siteConfig, ticketClasses } f
 
     const data = new FormData(form)
     const passengers = getPassengerPayload()
-    const primaryPassenger = passengers[0] || { fullName: '', passportId: '', gender: '', countryCode: '', countryName: '' }
-    const payload = {
-      travelClass: data.get('class'),
-      travelDate: data.get('date'),
-      departure: data.get('departure'),
-      adults: Number(data.get('adults') || 1),
-      children: Number(data.get('children') || 0),
-      fullName: primaryPassenger.fullName,
-      passportId: primaryPassenger.passportId,
-      gender: primaryPassenger.gender,
-      countryCode: primaryPassenger.countryCode,
-      countryName: primaryPassenger.countryName,
-      passengers,
-      email: data.get('email'),
-      consent: data.get('consent') === 'on',
-    }
 
-      if (submitButton instanceof HTMLButtonElement) {
-        submitButton.disabled = true
-        submitButton.textContent = 'Submitting securely...'
-      }
-    setStatus('Submitting your secure booking request...')
+    const messageLines = [
+      'Hi Safari Rail, I would like to make a booking request.',
+      '',
+      'Class: ' + String(data.get('class') || ''),
+      'Travel date: ' + String(data.get('date') || ''),
+      'Departure: ' + String(data.get('departure') || ''),
+      'Passengers: ' + String(data.get('adults') || 1) + ' adult(s), ' + String(data.get('children') || 0) + ' child(ren)',
+      'Email: ' + String(data.get('email') || ''),
+      '',
+    ]
 
-    try {
-      const response = await fetch('/api/bookings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-      const result = await response.json()
+    passengers.forEach((passenger, index) => {
+      messageLines.push(
+        'Passenger ' + (index + 1),
+        'Name: ' + passenger.fullName,
+        'Passport/ID: ' + passenger.passportId,
+        'Gender: ' + passenger.gender,
+        'Country: ' + passenger.countryName,
+        ''
+      )
+    })
 
-      if (!response.ok) {
-        const details = Array.isArray(result.errors) ? ` ${result.errors.join(' ')}` : ''
-        throw new Error(`${result.message || 'Submission failed.'}${details}`)
-      }
+    const message = messageLines.join('\n')
+    const whatsappUrl = 'https://wa.me/254769869503?text=' + encodeURIComponent(message)
 
-      if (typeof result.whatsappUrl === 'string') {
-        form.reset()
-        renderPassengerFields()
-        updateTotal()
-        setCurrentStep(0)
-        window.location.assign(result.whatsappUrl)
-        return
-      }
-
-      const bookingReference = typeof result.bookingReference === 'string' ? result.bookingReference : ''
-      const requestPage = new URL('/booking-request-received', window.location.origin)
-      requestPage.searchParams.set('reference', bookingReference)
-      window.location.assign(requestPage)
-      return
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : 'We could not submit your booking right now. Please try again.', true)
-    } finally {
-      if (submitButton instanceof HTMLButtonElement) {
-        submitButton.disabled = false
-        submitButton.textContent = 'Submit Booking Request'
-      }
-    }
+    window.location.assign(whatsappUrl)
   })
 </script>
+
