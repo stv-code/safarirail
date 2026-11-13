@@ -22,6 +22,20 @@ import { bookingExperience, departures, formatKes, siteConfig, ticketClasses } f
   <fieldset class="form-step" data-step="0">
     <legend>Trip</legend>
   <div class="field">
+    <label for="from-station">From</label>
+    <select id="from-station" name="fromStation" required>
+      <option value="Nairobi Terminus" selected>Nairobi Terminus</option>
+      <option value="Mombasa Terminus">Mombasa Terminus</option>
+    </select>
+  </div>
+  <div class="field">
+    <label for="to-station">To</label>
+    <select id="to-station" name="toStation" required>
+      <option value="Nairobi Terminus">Nairobi Terminus</option>
+      <option value="Mombasa Terminus" selected>Mombasa Terminus</option>
+    </select>
+  </div>
+  <div class="field">
     <label for="class">Class</label>
     <select id="class" name="class">
       {ticketClasses.map((ticketClass) => (
@@ -98,6 +112,8 @@ import { bookingExperience, departures, formatKes, siteConfig, ticketClasses } f
   import countries from '@/data/countries.json'
   const countryOptions = countries.map((country) => ({ code: country['alpha-2'], name: country.name }))
   const form = document.querySelector('#booking-panel')
+  const fromStation = document.querySelector('#from-station')
+  const toStation = document.querySelector('#to-station')
   const dateInput = document.querySelector('#date')
   const classInput = document.querySelector('#class')
   const adultsInput = document.querySelector('#adults')
@@ -285,6 +301,19 @@ import { bookingExperience, departures, formatKes, siteConfig, ticketClasses } f
   renderPassengerFields()
   setCurrentStep(0)
 
+  fromStation?.addEventListener('change', () => {
+    if (!(fromStation instanceof HTMLSelectElement) || !(toStation instanceof HTMLSelectElement)) return
+    if (fromStation.value === toStation.value) {
+      toStation.value = fromStation.value === 'Nairobi Terminus' ? 'Mombasa Terminus' : 'Nairobi Terminus'
+    }
+  })
+  toStation?.addEventListener('change', () => {
+    if (!(fromStation instanceof HTMLSelectElement) || !(toStation instanceof HTMLSelectElement)) return
+    if (fromStation.value === toStation.value) {
+      fromStation.value = toStation.value === 'Nairobi Terminus' ? 'Mombasa Terminus' : 'Nairobi Terminus'
+    }
+  })
+
   prevButton?.addEventListener('click', () => setCurrentStep(currentStep - 1))
   nextButton?.addEventListener('click', () => {
     if (!validateCurrentStep()) return
@@ -303,6 +332,8 @@ import { bookingExperience, departures, formatKes, siteConfig, ticketClasses } f
     const messageLines = [
       'Hi Safari Rail, I would like to make a booking request.',
       '',
+      'From: ' + String(data.get('fromStation') || ''),
+      'To: ' + String(data.get('toStation') || ''),
       'Class: ' + String(data.get('class') || ''),
       'Travel date: ' + String(data.get('date') || ''),
       'Departure: ' + String(data.get('departure') || ''),
