@@ -136,7 +136,7 @@ const stationPhotos = [
 
     <section class="section guides-section" id="travel-guides">
       <div class="section-heading"><p class="eyebrow">Before you set off</p><div><h2>A smoother trip starts here.</h2><p>Practical answers for planning your first train journey in Kenya.</p></div></div>
-      <div class="guide-grid">{guides.map((guide, index) => <a class="guide-card" href={`/guides/${guide.slug}`}><span class="guide-number">0{index + 1} / Travel guide</span><h3>{guide.title}</h3><p>{guide.description}</p><span class="text-link">Read the guide <span aria-hidden="true">&#8599;</span></span></a>)}</div>
+      <div class="guide-grid">{guides.map((guide, index) => <a class="guide-card" href={`/guides/${guide.slug}/`}><span class="guide-number">0{index + 1} / Travel guide</span><h3>{guide.title}</h3><p>{guide.description}</p><span class="text-link">Read the guide <span aria-hidden="true">&#8599;</span></span></a>)}</div>
     </section>
 
     <section class="section payment-section">
