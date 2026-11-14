@@ -195,6 +195,22 @@ select {
   color: var(--white);
 }
 
+.nav-links .nav-feature-tab {
+  padding: 9px 13px;
+  border: 1px solid rgba(200, 137, 52, 0.85);
+  border-radius: 999px;
+  background: rgba(200, 137, 52, 0.2);
+  color: var(--white);
+  font-size: 0.84rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.nav-links .nav-feature-tab:hover {
+  background: var(--ochre);
+  color: var(--ink);
+}
+
 .header-action,
 .ghost-button,
 .primary-button {
@@ -1229,6 +1245,19 @@ h1 {
   .nav-links a {
     padding: 12px;
     border-radius: var(--radius);
+  }
+
+  .nav-links .nav-feature-tab {
+    margin: 4px 0;
+    padding: 12px;
+    border-color: #e7d4b4;
+    background: #fff8ec;
+    color: var(--forest);
+  }
+
+  .nav-links .nav-feature-tab:hover {
+    background: #f4e7d1;
+    color: var(--forest);
   }
 
   .nav-links a:hover {

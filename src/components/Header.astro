@@ -2,6 +2,7 @@
 const links = [
   { href: '/#how-it-works', label: 'How It Works' },
   { href: '/#pricing', label: 'Classes' },
+  { href: '/sgr/availability/', label: 'Check Open Seats', featured: true },
   { href: '/reviews/', label: 'Reviews' },
   { href: '/#travel-guides', label: 'Travel guides' },
   { href: '/#contact', label: 'Contact' },
@@ -23,7 +24,7 @@ const links = [
   </button>
 
   <nav class="nav-links" id="primary-navigation" aria-label="Primary navigation">
-    {links.map((link) => <a href={link.href}>{link.label}</a>)}
+    {links.map((link) => <a href={link.href} class:list={{ 'nav-feature-tab': link.featured }}>{link.label}</a>)}
   </nav>
 
   <a class="header-action" href="/#booking">
