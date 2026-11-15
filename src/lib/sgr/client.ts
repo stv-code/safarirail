@@ -1,9 +1,19 @@
 export type AvailabilityResponse = {
   date?: string
-  status?: string
+  status?: 'available' | 'sold-out' | 'unchecked' | 'unavailable' | 'outside-window'
   lastChecked?: string | null
+  cached?: boolean
+  source?: 'none' | 'live' | 'historical-fixture'
   message?: string
-  trains?: unknown[]
+  trains?: Array<{
+    trainNumber: string
+    departure: string
+    arrival: string
+    economyAvailable: number
+    firstClassAvailable: number
+    economyFare: number
+    firstClassFare: number
+  }>
 }
 
 export async function fetchAvailability(
@@ -19,6 +29,7 @@ export async function fetchAvailability(
   try {
     const response = await fetcher(`/api/sgr/availability?${query}`, {
       headers: { Accept: 'application/json' },
+      cache: 'no-store',
       signal: controller.signal,
     })
     return { ok: response.ok, data: await response.json() as AvailabilityResponse }

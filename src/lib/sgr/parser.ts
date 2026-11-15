@@ -82,7 +82,7 @@ function clock(timestamp: string, field: string): { date: string; time: string }
 }
 
 /**
- * Parse captured result cards only. This function never submits forms, uses
+ * Parse official portal result cards. This function never submits forms, uses
  * CSRF tokens, follows redirects, or treats an empty/error page as sold out.
  */
 export function parseAvailabilityHtml(html: string): ParsedTrain[] {

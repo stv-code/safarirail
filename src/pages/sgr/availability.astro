@@ -23,17 +23,15 @@ import Footer from '../../components/Footer.astro'
       <div class="route-card">
         <label>
           <span>Origin</span>
-          <select id="origin" aria-label="Origin station">
-            <option value="nairobi-terminus">Nairobi Terminus</option>
-            <option value="mombasa-terminus">Mombasa Terminus</option>
+          <select id="origin" aria-label="Origin station" disabled>
+            <option value="">Loading stations…</option>
           </select>
         </label>
         <button class="swap-route" id="swap-route" type="button" aria-label="Swap origin and destination">↔</button>
         <label>
           <span>Destination</span>
-          <select id="destination" aria-label="Destination station">
-            <option value="mombasa-terminus">Mombasa Terminus</option>
-            <option value="nairobi-terminus">Nairobi Terminus</option>
+          <select id="destination" aria-label="Destination station" disabled>
+            <option value="">Loading destinations…</option>
           </select>
         </label>
       </div>
@@ -60,12 +58,14 @@ import Footer from '../../components/Footer.astro'
             <span><i class="legend-dot sold-out"></i>Sold out</span>
             <span><i class="legend-dot unchecked"></i>Unchecked</span>
             <span><i class="legend-dot unavailable"></i>Unavailable</span>
+            <span><i class="legend-dot outside-window"></i>Outside booking window</span>
           </div>
           <button class="primary-button refresh-button" id="refresh" type="button" disabled>
-            Check selected date
+            Refresh availability
           </button>
         </div>
         <p class="last-checked" id="last-checked" aria-live="polite">No successful availability checks yet.</p>
+      <p class="directory-status" id="directory-status" role="status" aria-live="polite">Connecting to Kenya Railways…</p>
       </div>
 
       <section class="train-results" aria-labelledby="results-title" aria-live="polite">
@@ -78,9 +78,8 @@ import Footer from '../../components/Footer.astro'
       </section>
 
       <aside class="availability-notice" aria-label="Availability information">
-        <strong>Live seat counts are not connected yet. This calendar will not label a date sold out without a reliable result.</strong>
-        <a href="https://metickets.krc.co.ke/" target="_blank" rel="noopener noreferrer">Check seats on Kenya Railways ↗</a>
         <strong>Availability information is indicative and may change. Confirm current availability through the official Kenya Railways booking portal.</strong>
+        <a href="https://metickets.krc.co.ke/" target="_blank" rel="noopener noreferrer">Open Kenya Railways portal ↗</a>
         <p>This calendar checks dates only when you request a check. It does not reserve seats or take bookings. Days are not marked sold out when no reliable result is available.</p>
       </aside>
     </section>
@@ -90,9 +89,11 @@ import Footer from '../../components/Footer.astro'
 </BaseLayout>
 
 <script>
-  import { fetchAvailability } from '../../lib/sgr/client'
+  import { fetchAvailability, type AvailabilityResponse } from '../../lib/sgr/client'
 
   type DayStatus = 'unchecked' | 'unavailable' | 'available' | 'sold-out' | 'outside-window'
+  type CheckedDate = { result: AvailabilityResponse; status: DayStatus }
+  type Station = { id: string; name: string }
   const originSelect = document.querySelector<HTMLSelectElement>('#origin')!
   const destinationSelect = document.querySelector<HTMLSelectElement>('#destination')!
   const calendar = document.querySelector<HTMLDivElement>('#calendar-days')!
@@ -100,8 +101,12 @@ import Footer from '../../components/Footer.astro'
   const resultsTitle = document.querySelector<HTMLElement>('#results-title')!
   const resultsMessage = document.querySelector<HTMLElement>('#results-message')!
   const lastChecked = document.querySelector<HTMLElement>('#last-checked')!
+  const directoryStatus = document.querySelector<HTMLElement>('#directory-status')!
+  const trainList = document.querySelector<HTMLDivElement>('#train-list')!
   const refreshButton = document.querySelector<HTMLButtonElement>('#refresh')!
-  const statuses = new Map<string, DayStatus>()
+  const checkedDates = new Map<string, CheckedDate>()
+  let earliestDate: string | null = null
+  let latestDate: string | null = null
   let selectedDate = ''
   const today = new Date()
   let visibleMonth = new Date(today.getFullYear(), today.getMonth(), 1)
@@ -111,6 +116,80 @@ import Footer from '../../components/Footer.astro'
     String(date.getMonth() + 1).padStart(2, '0'),
     String(date.getDate()).padStart(2, '0'),
   ].join('-')
+  const routeDateKey = (date: string) => `${originSelect.value}:${destinationSelect.value}:${date}`
+  const outsideWindow = (date: string) =>
+    Boolean((earliestDate && date < earliestDate) || (latestDate && date > latestDate))
+  const readableDate = (date: string) =>
+    new Intl.DateTimeFormat('en', { dateStyle: 'full', timeZone: 'UTC' }).format(new Date(`${date}T00:00:00Z`))
+
+  async function requestJson<T>(url: string): Promise<{ ok: boolean; data: T }> {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 10_000)
+    try {
+      const response = await fetch(url, {
+        headers: { Accept: 'application/json' },
+        signal: controller.signal,
+      })
+      return { ok: response.ok, data: await response.json() as T }
+    } finally {
+      clearTimeout(timeout)
+    }
+  }
+
+  function fillOptions(select: HTMLSelectElement, values: Station[], placeholder: string, preferred?: string) {
+    select.replaceChildren()
+    if (!values.length) {
+      const option = new Option(placeholder, '')
+      select.add(option)
+      select.disabled = true
+      return
+    }
+    for (const station of values) select.add(new Option(station.name, station.id))
+    select.value = values.find((station) => station.name === preferred)?.id || values[0].id
+    select.disabled = false
+  }
+
+  async function loadDestinations(preferred = 'Mombasa Terminus') {
+    destinationSelect.disabled = true
+    fillOptions(destinationSelect, [], 'Loading destinations…')
+    try {
+      const query = new URLSearchParams({ origin: originSelect.value })
+      const { ok, data } = await requestJson<{ destinations?: Station[]; message?: string }>(`/api/sgr/destinations?${query}`)
+      if (!ok || !data.destinations?.length) throw new Error(data.message || 'Destinations are unavailable.')
+      fillOptions(destinationSelect, data.destinations, 'No destinations available', preferred)
+      directoryStatus.textContent = 'Stations loaded from Kenya Railways.'
+      renderCalendar()
+    } catch {
+      fillOptions(destinationSelect, [], 'Destinations unavailable')
+      directoryStatus.textContent = 'Kenya Railways destination data is unavailable. Try again later.'
+    }
+  }
+
+  async function loadStations() {
+    try {
+      const { ok, data } = await requestJson<{
+        stations?: Station[]
+        window?: { earliest?: string | null; latest?: string | null }
+        message?: string
+      }>('/api/sgr/stations')
+      if (!ok || !data.stations?.length) throw new Error(data.message || 'Stations are unavailable.')
+      earliestDate = data.window?.earliest || null
+      latestDate = data.window?.latest || null
+      fillOptions(originSelect, data.stations, 'No stations available', 'Nairobi Terminus')
+      await loadDestinations()
+      renderCalendar()
+    } catch {
+      fillOptions(originSelect, [], 'Stations unavailable')
+      fillOptions(destinationSelect, [], 'Destinations unavailable')
+      directoryStatus.textContent = 'Kenya Railways station data is unavailable. Try again later.'
+    }
+  }
+
+  function stateFor(date: string): CheckedDate | undefined {
+    if (outsideWindow(date)) return { status: 'outside-window', result: { date, status: 'outside-window' } }
+    return checkedDates.get(routeDateKey(date))
+  }
+
   function renderCalendar() {
     monthLabel.textContent = new Intl.DateTimeFormat('en', { month: 'long', year: 'numeric' }).format(visibleMonth)
     calendar.replaceChildren()
@@ -126,26 +205,86 @@ import Footer from '../../components/Footer.astro'
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth(), day)
       const key = dateKey(date)
-      const status = statuses.get(key) || 'unchecked'
+      const state = stateFor(key)?.status || 'unchecked'
       const button = document.createElement('button')
       button.type = 'button'
-      button.className = `calendar-day state-${status}${selectedDate === key ? ' is-selected' : ''}`
+      button.className = `calendar-day state-${state}${selectedDate === key ? ' is-selected' : ''}`
       button.dataset.date = key
-      button.setAttribute('aria-label', `${new Intl.DateTimeFormat('en', { dateStyle: 'full' }).format(date)}, ${status.replace('-', ' ')}`)
+      button.setAttribute('aria-label', `${new Intl.DateTimeFormat('en', { dateStyle: 'full' }).format(date)}, ${state.replace('-', ' ')}`)
       button.setAttribute('aria-pressed', String(selectedDate === key))
-      button.innerHTML = `<span>${day}</span><i aria-hidden="true"></i>`
+      const label = document.createElement('span')
+      label.textContent = String(day)
+      const marker = document.createElement('i')
+      marker.setAttribute('aria-hidden', 'true')
+      button.append(label, marker)
       button.addEventListener('click', () => selectDate(key))
       calendar.append(button)
     }
   }
 
+  function formatKes(value: number) {
+    return new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES', maximumFractionDigits: 0 }).format(value)
+  }
+
+  function renderSelection(record: CheckedDate | undefined, fromCache = false) {
+    if (!selectedDate) return
+    resultsTitle.textContent = readableDate(selectedDate)
+    trainList.replaceChildren()
+    const result = record?.result
+    if (!record) {
+      resultsMessage.textContent = 'This date has not been checked. Refresh to request current seat information.'
+      lastChecked.textContent = 'No successful availability checks yet.'
+      return
+    }
+    resultsMessage.textContent = result?.message || (
+      record.status === 'available' ? 'Seats are available on the train services below.' :
+      record.status === 'sold-out' ? 'The portal confirmed that all listed classes are sold out.' :
+      'The source could not confirm availability. This does not mean the train is sold out.'
+    )
+    if (result?.lastChecked) {
+      const stamp = new Date(result.lastChecked).toLocaleString()
+      lastChecked.textContent = fromCache
+        ? `Showing this session’s cached result from ${stamp}. Refresh to check again.`
+        : `Last successful check: ${stamp}`
+    } else {
+      lastChecked.textContent = 'No successful availability checks for this date.'
+    }
+    for (const train of result?.trains || []) {
+      const article = document.createElement('article')
+      article.className = 'train-result'
+      const heading = document.createElement('h3')
+      heading.textContent = `Train ${train.trainNumber}`
+      const times = document.createElement('p')
+      times.textContent = `${train.departure} departure · ${train.arrival} arrival`
+      const details = document.createElement('dl')
+      for (const [label, seats, fare] of [
+        ['Economy', train.economyAvailable, train.economyFare],
+        ['First Class', train.firstClassAvailable, train.firstClassFare],
+      ] as const) {
+        const term = document.createElement('dt')
+        term.textContent = label
+        const value = document.createElement('dd')
+        value.textContent = `${seats.toLocaleString()} seats · ${formatKes(fare)} adult fare`
+        details.append(term, value)
+      }
+      article.append(heading, times, details)
+      trainList.append(article)
+    }
+  }
+
   function selectDate(date: string) {
     selectedDate = date
-    refreshButton.disabled = false
-    refreshButton.textContent = 'Check selected date'
-    resultsTitle.textContent = new Intl.DateTimeFormat('en', { dateStyle: 'full', timeZone: 'UTC' }).format(new Date(`${date}T00:00:00Z`))
-    resultsMessage.textContent = 'This date has not been checked.'
-    document.querySelector('#train-list')!.replaceChildren()
+    const record = stateFor(date)
+    refreshButton.disabled = !originSelect.value || !destinationSelect.value || record?.status === 'outside-window'
+    refreshButton.textContent = record?.status === 'outside-window' ? 'Outside booking window' : 'Refresh availability'
+    if (record?.status === 'outside-window') {
+      resultsTitle.textContent = readableDate(date)
+      resultsMessage.textContent = 'This date is outside the travel dates currently accepted by the official portal.'
+      lastChecked.textContent = 'No availability search was made for this date.'
+      trainList.replaceChildren()
+    } else {
+      renderSelection(record, Boolean(record))
+    }
     renderCalendar()
   }
 
@@ -157,52 +296,66 @@ import Footer from '../../components/Footer.astro'
     visibleMonth = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1, 1)
     renderCalendar()
   })
-  document.querySelector('#swap-route')?.addEventListener('click', () => {
-    const origin = originSelect.value
-    originSelect.value = destinationSelect.value
-    destinationSelect.value = origin
+  originSelect.addEventListener('change', () => {
+    selectedDate = ''
+    refreshButton.disabled = true
+    void loadDestinations()
   })
+  destinationSelect.addEventListener('change', () => {
+    selectedDate = ''
+    refreshButton.disabled = true
+    renderCalendar()
+  })
+  document.querySelector('#swap-route')?.addEventListener('click', () => {
+    const previousOriginName = originSelect.selectedOptions[0]?.textContent || ''
+    const previousDestinationName = destinationSelect.selectedOptions[0]?.textContent || ''
+    const nextOrigin = destinationSelect.value
+    const nextOriginName = previousDestinationName
+    originSelect.value = nextOrigin
+    selectedDate = ''
+    refreshButton.disabled = true
+    void loadDestinations(previousOriginName || nextOriginName)
+  })
+
   refreshButton.addEventListener('click', async () => {
-    if (!selectedDate) return
+    if (!selectedDate || outsideWindow(selectedDate) || !originSelect.value || !destinationSelect.value) return
     refreshButton.disabled = true
     refreshButton.textContent = 'Checking…'
-    resultsMessage.textContent = 'Requesting an availability check…'
+    resultsMessage.textContent = 'Requesting a fresh availability check from Kenya Railways…'
     try {
       const { ok, data: result } = await fetchAvailability(
         originSelect.value,
         destinationSelect.value,
         selectedDate,
+        fetch,
+        20_000,
       )
-      if (ok && result.status === 'available') {
-        statuses.set(selectedDate, 'available')
-        lastChecked.textContent = result.lastChecked
-          ? `Last successful check: ${new Date(result.lastChecked).toLocaleString()}`
-          : 'Availability check complete.'
-        resultsMessage.textContent = 'Verified train results are shown below.'
-      } else {
-        statuses.set(selectedDate, 'unavailable')
-        resultsMessage.textContent = result.message || 'The source could not provide a reliable result. This does not mean the train is sold out.'
-        lastChecked.textContent = 'No successful availability checks yet.'
-      }
+      const status = ok ? result.status : 'unavailable'
+      const normalizedStatus: DayStatus =
+        status === 'available' || status === 'sold-out' || status === 'outside-window'
+          ? status
+          : 'unavailable'
+      const record = { result, status: normalizedStatus }
+      checkedDates.set(routeDateKey(selectedDate), record)
+      renderSelection(record)
     } catch {
-      statuses.set(selectedDate, 'unavailable')
-      resultsMessage.textContent = 'The availability source could not be reached. This does not mean the train is sold out.'
-      lastChecked.textContent = 'No successful availability checks yet.'
+      const result: AvailabilityResponse = {
+        date: selectedDate,
+        status: 'unavailable',
+        message: 'The official source could not be reached in time. This does not mean the train is sold out.',
+      }
+      const record = { result, status: 'unavailable' as const }
+      checkedDates.set(routeDateKey(selectedDate), record)
+      renderSelection(record)
     } finally {
       renderCalendar()
-      refreshButton.disabled = false
-      refreshButton.textContent = 'Check selected date'
+      refreshButton.disabled = !selectedDate || outsideWindow(selectedDate)
+      refreshButton.textContent = outsideWindow(selectedDate) ? 'Outside booking window' : 'Refresh availability'
     }
   })
-  originSelect.addEventListener('change', () => {
-    statuses.clear()
-    renderCalendar()
-  })
-  destinationSelect.addEventListener('change', () => {
-    statuses.clear()
-    renderCalendar()
-  })
+
   renderCalendar()
+  void loadStations()
 </script>
 
 <style>
@@ -234,15 +387,24 @@ import Footer from '../../components/Footer.astro'
   .calendar-day.state-available i,.legend-dot.available { background: #23834e; }
   .calendar-day.state-sold-out i,.legend-dot.sold-out { background: #c7443d; }
   .calendar-day.state-unavailable i,.calendar-day.state-outside-window i,.legend-dot.unavailable { background: #d08a20; }
+  .calendar-day.state-outside-window { border-style: dashed; background: #eceeea; color: #77817b; }
+  .calendar-day.state-outside-window i,.legend-dot.outside-window { border: 1px solid #87908a; background: transparent; }
   .calendar-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 18px; margin-top: 22px; }
   .availability-legend { display: flex; flex-wrap: wrap; gap: 12px 18px; }
   .availability-legend span { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: .8rem; }
   .legend-dot { flex: none; }
   .refresh-button:disabled { opacity: .56; cursor: not-allowed; }
   .last-checked { margin: 14px 0 0; color: var(--muted); font-size: .82rem; }
+  .directory-status { margin: 5px 0 0; color: var(--muted); font-size: .82rem; }
   .train-results { display: grid; grid-template-columns: minmax(180px,.7fr) 1.3fr; gap: 12px 24px; align-items: start; margin-top: 18px; padding: clamp(20px,4vw,30px); }
   .train-results > p { margin: 0; color: var(--muted); line-height: 1.65; }
   #train-list { grid-column: 2; }
+  .train-result { display: grid; grid-template-columns: 1fr auto; gap: 10px 20px; padding: 16px 0; border-top: 1px solid #e4e9e5; }
+  .train-result h3 { margin: 0; color: var(--forest); }
+  .train-result > p { margin: 0; color: var(--muted); }
+  .train-result dl { grid-column: 1 / -1; display: grid; grid-template-columns: 100px 1fr; gap: 7px 14px; margin: 0; }
+  .train-result dt { color: var(--forest); font-weight: 800; }
+  .train-result dd { margin: 0; color: var(--muted); }
   .availability-notice { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 22px; margin-top: 18px; padding: 20px 24px; border: 1px solid #e2d4b6; background: #fffaf0; color: var(--ink); }
   .availability-notice strong { flex: 1 1 500px; line-height: 1.6; }
   .availability-notice a { color: var(--coral); font-weight: 800; text-decoration: underline; }
@@ -259,6 +421,7 @@ import Footer from '../../components/Footer.astro'
     .calendar-day i { width: 7px; height: 7px; }
     .train-results { grid-template-columns: 1fr; }
     #train-list { grid-column: auto; }
+    .train-result { grid-template-columns: 1fr; gap: 6px; }
     .refresh-button { width: 100%; }
   }
 </style>

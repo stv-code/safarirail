@@ -2,10 +2,7 @@ export type SgrStation = { id: string; name: string }
 export type AvailabilityStatus = 'available' | 'sold-out' | 'unchecked' | 'unavailable' | 'outside-window'
 
 export type ProviderTrain = {
-  trainId: string
   trainNumber: string
-  origin: string
-  destination: string
   departure: string
   arrival: string
   economyAvailable: number
@@ -17,7 +14,7 @@ export type ProviderTrain = {
 export type AvailabilityQuery = { origin: string; destination: string; date: string }
 export type AvailabilityResult = {
   date: string
-  status: 'available' | 'sold-out' | 'unavailable'
+  status: 'available' | 'sold-out' | 'unavailable' | 'outside-window'
   lastChecked: string | null
   source: 'none' | 'live' | 'historical-fixture'
   isLive: boolean
@@ -28,8 +25,8 @@ export interface SgrAvailabilityProvider {
   check(query: AvailabilityQuery): Promise<AvailabilityResult>
 }
 
-// These are the only stations in SafariRail's existing route selector. There
-// is no public KRC API or permission to automate the booking portal.
+// Development-only station values. Production station/destination lists are
+// retrieved dynamically by the live Cloudflare Pages provider.
 export const stations: SgrStation[] = [
   { id: 'nairobi-terminus', name: 'Nairobi Terminus' },
   { id: 'mombasa-terminus', name: 'Mombasa Terminus' },
@@ -53,9 +50,8 @@ export function formatDate(value: string): string {
   }).format(new Date(`${value}T00:00:00Z`))
 }
 
-// Safe default adapter: report inability to verify inventory; never turn a
-// provider failure into a zero-seat result. Replace only with an authorized
-// provider and source-specific tests.
+// Explicit no-live-data adapter retained for isolated tests. Production API
+// routes use checkLiveAvailability and never fall back to this provider.
 function validateQuery(origin: string, destination: string, date: string) {
   if (!stations.some((station) => station.id === origin) ||
       !stations.some((station) => station.id === destination) ||
