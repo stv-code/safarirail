@@ -38,6 +38,15 @@ export class AvailabilityParseError extends Error {
   }
 }
 
+/** Only accept a route/date-specific statement in the visible result message. */
+export function confirmsSoldOut(html: string, origin: string, destination: string, date: string): boolean {
+  const clean = html.replace(/<!--[\s\S]*?-->/g, '').replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
+  const expected = `Train seats fully booked for ${origin} to ${destination} on ${date.slice(5, 7)}/${date.slice(8, 10)}/${date.slice(0, 4)}. Please search for another date.`
+  return [...clean.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi)].some((match) =>
+    decodeHtml(match[1].replace(/<[^>]*>/g, '')).replace(/\s+/g, ' ').trim() === expected,
+  )
+}
+
 function decodeHtml(value: string): string {
   return value
     .replace(/&amp;/g, '&')
@@ -105,7 +114,8 @@ export function parseAvailabilityHtml(html: string): ParsedTrain[] {
     const fields = fieldValues(content)
     const departure = clock(fields.departure || '', 'departure')
     const arrival = clock(fields.arrival || '', 'arrival')
-    if (departure.date !== arrival.date) throw new AvailabilityParseError('Train timestamps use different travel dates')
+    const duration = Date.parse(`${arrival.date}T${arrival.time}:00Z`) - Date.parse(`${departure.date}T${departure.time}:00Z`)
+    if (duration <= 0 || duration > 24 * 60 * 60_000) throw new AvailabilityParseError('Invalid train journey duration')
 
     const route = decodeHtml(heading[1]).match(/^([^\s]+)\s*-\s*(.+?)\s+to\s+(.+)$/i)
     if (!route) throw new AvailabilityParseError('Train heading is missing its number or route')

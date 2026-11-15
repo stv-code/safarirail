@@ -28,10 +28,10 @@ async function main() {
     page.on('pageerror', error => errors.push(error.message))
     await page.route('**/_vercel/insights/**', route => route.fulfill({ contentType: 'text/javascript', body: '' }))
     await page.route('**/api/reviews', route => route.fulfill({ json: { reviews: [] } }))
-    let booking
-    await page.route('**/api/bookings', route => {
-      booking = route.request().postDataJSON()
-      return route.fulfill({ json: { bookingReference: 'TEST-LOCAL-ONLY' } })
+    let bookingMessage
+    await page.route('https://wa.me/**', route => {
+      bookingMessage = new URL(route.request().url()).searchParams.get('text')
+      return route.fulfill({ contentType: 'text/html', body: '<p>Local WhatsApp handoff check. No message sent.</p>' })
     })
     await page.goto(base, { waitUntil: 'networkidle' })
     assert.equal(await page.locator('.passenger-entry').count(), 1, 'Passenger form must initialize')
@@ -79,10 +79,11 @@ async function main() {
     await page.locator('#privacy-consent').check()
     await page.locator('#booking-next').click()
     await page.getByRole('button', { name: 'Submit Booking Request', exact: true }).click()
-    await page.waitForURL('**/booking-request-received?reference=TEST-LOCAL-ONLY')
-    assert.equal(booking.passengers.length, 1)
-    assert.equal(booking.passengers[0].countryCode, 'GB')
-    assert.equal(booking.consent, true)
+    await page.waitForURL('https://wa.me/**')
+    assert.match(bookingMessage, /Passenger 1/)
+    assert.match(bookingMessage, /Test Traveller/)
+    assert.match(bookingMessage, /TEST12345/)
+    assert.match(bookingMessage, /test@example.com/)
 
     const sitemap = await fs.readFile(path.join(root, 'sitemap-0.xml'), 'utf8')
     assert.doesNotMatch(sitemap, /booking-confirmed|booking-request-received|404/)
@@ -116,7 +117,7 @@ async function main() {
     await page.goto(base)
     await page.screenshot({ path: '.artifacts/home-mobile.png', fullPage: true })
     assert.deepEqual(errors, [], 'No browser runtime errors')
-    console.log('PASS: desktop/mobile layout, navigation, passenger controls, mocked booking submission, analytics initialization/redaction, canonical URLs, sitemap, structured data and internal links.')
+    console.log('PASS: desktop/mobile layout, navigation, passenger controls, intercepted WhatsApp handoff, analytics initialization/redaction, canonical URLs, sitemap, structured data and internal links.')
   } finally {
     if (browser) await browser.close()
     server.close()

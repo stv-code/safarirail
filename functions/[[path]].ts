@@ -7,7 +7,9 @@ export const onRequest = async ({ request, next }: PagesContext): Promise<Respon
   const url = new URL(request.url)
   const canonicalHost = 'www.safarirail.co.ke'
 
-  if (url.hostname !== canonicalHost || url.protocol !== 'https:') {
+  // Deployment URLs remain directly reviewable before promotion to production.
+  const preview = url.hostname.endsWith('.safarirail.pages.dev')
+  if ((!preview && url.hostname !== canonicalHost) || url.protocol !== 'https:') {
     url.protocol = 'https:'
     url.hostname = canonicalHost
     return Response.redirect(url.href, 301)

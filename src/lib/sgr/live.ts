@@ -2,12 +2,17 @@ import {
   AvailabilityParseError,
   parseAvailabilityHtml,
   parseStationOptions,
+  confirmsSoldOut,
   type ParsedTrain,
 } from './parser'
 import { isValidDate, type AvailabilityResult, type SgrStation } from './provider'
 
 const PORTAL = 'https://metickets.krc.co.ke'
-const SCHEDULE_TYPE = 'inter_county'
+export const scheduleTypes = ['express', 'inter_county', 'phase2'] as const
+export type ScheduleType = typeof scheduleTypes[number]
+export function validSchedule(value: string): value is ScheduleType {
+  return scheduleTypes.includes(value as ScheduleType)
+}
 const REQUEST_TIMEOUT_MS = 9_000
 const DIRECTORY_TTL_MS = 5 * 60_000
 
@@ -33,6 +38,7 @@ function getSetCookies(headers: Headers): string[] {
 
 class PortalSession {
   private readonly cookies = new Map<string, string>()
+  private readonly deadline = Date.now() + 28_000
 
   constructor(private readonly fetcher: typeof fetch = fetch) {}
 
@@ -66,22 +72,35 @@ class PortalSession {
         headers.set('Cookie', [...this.cookies].map(([name, value]) => `${name}=${value}`).join('; '))
       }
       const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+      const remaining = this.deadline - Date.now()
+      if (remaining <= 0) throw new PortalError(options.stage, 'network_or_timeout')
+      const timeout = setTimeout(() => controller.abort(), Math.min(REQUEST_TIMEOUT_MS, remaining))
       let response: Response
       try {
-        response = await this.fetcher(url, {
+        // Call as a standalone function: Workers' native fetch rejects a
+        // PortalSession receiver with an illegal-invocation error.
+        const fetcher = this.fetcher
+        const upstream = await fetcher(url, {
           method,
           headers,
           body,
           redirect: 'manual',
           signal: controller.signal,
         })
+        // Keep the timeout active while receiving the body, not only headers.
+        const bodyBytes = await upstream.arrayBuffer()
+        if (bodyBytes.byteLength > 2_000_000) throw new Error('Oversize portal response')
+        response = new Response([204, 205, 304].includes(upstream.status) ? null : bodyBytes, {
+          status: upstream.status, headers: upstream.headers,
+        })
       } catch {
         throw new PortalError(options.stage, 'network_or_timeout')
       } finally {
         clearTimeout(timeout)
       }
-      this.absorbCookies(response.headers)
+      // Anonymous directory endpoints create their own PHP session. Its cookie
+      // must never replace the session associated with our search CSRF token.
+      if (options.sendCookies !== false) this.absorbCookies(response.headers)
       if (response.status < 300 || response.status >= 400 || method === 'POST') return response
       if (redirectCount === 3) throw new PortalError(options.stage, 'redirect_loop')
       const location = response.headers.get('location')
@@ -154,9 +173,10 @@ export function parseBookingWindow(html: string, now = new Date()): BookingWindo
 }
 
 type Cached<T> = { value: T; expiresAt: number }
-let stationCache: Cached<SgrStation[]> | undefined
+const stationCache = new Map<ScheduleType, Cached<SgrStation[]>>()
 const destinationCache = new Map<string, Cached<SgrStation[]>>()
-let directoryLoad: Promise<SgrStation[]> | undefined
+const directoryLoads = new Map<ScheduleType, Promise<SgrStation[]>>()
+const directories = new Map<ScheduleType, Cached<{ stations: SgrStation[]; window: BookingWindow }>>()
 
 async function responseText(
   session: PortalSession,
@@ -179,74 +199,77 @@ async function pageWithSession(session: PortalSession): Promise<string> {
   return html
 }
 
-async function fetchStations(session: PortalSession): Promise<SgrStation[]> {
+async function fetchStations(session: PortalSession, service: ScheduleType): Promise<SgrStation[]> {
   const html = await responseText(
     session,
-    `/fetch.php?type=terminals&schedule_type=${SCHEDULE_TYPE}`,
+    `/fetch.php?type=terminals&schedule_type=${service}`,
     'stations',
     false,
   )
   const found = parseStationOptions(html)
   if (!found.length) throw new PortalError('stations', 'empty_station_list')
-  stationCache = { value: found, expiresAt: Date.now() + DIRECTORY_TTL_MS }
+  stationCache.set(service, { value: found, expiresAt: Date.now() + DIRECTORY_TTL_MS })
   return found
 }
 
-async function stationsFor(session: PortalSession): Promise<SgrStation[]> {
-  if (stationCache && stationCache.expiresAt > Date.now()) return stationCache.value
-  if (directoryLoad) return directoryLoad
-  directoryLoad = fetchStations(session)
-  try {
-    return await directoryLoad
-  } finally {
-    directoryLoad = undefined
-  }
+async function stationsFor(session: PortalSession, service: ScheduleType): Promise<SgrStation[]> {
+  const cached = stationCache.get(service)
+  if (cached && cached.expiresAt > Date.now()) return cached.value
+  const pending = directoryLoads.get(service)
+  if (pending) return pending
+  const load = fetchStations(session, service)
+  directoryLoads.set(service, load)
+  try { return await load } finally { directoryLoads.delete(service) }
 }
 
-async function fetchDestinations(session: PortalSession, origin: string): Promise<SgrStation[]> {
+async function fetchDestinations(session: PortalSession, origin: string, service: ScheduleType): Promise<SgrStation[]> {
   const html = await responseText(
     session,
-    `/fetch.php?type=destinations&schedule_type=${SCHEDULE_TYPE}&terminal_id=${encodeURIComponent(origin)}`,
+    `/fetch.php?type=destinations&schedule_type=${service}&terminal_id=${encodeURIComponent(origin)}`,
     'destinations',
     false,
   )
   const found = parseStationOptions(html)
   const result = found.filter((station) => station.id !== origin)
   if (!result.length) throw new PortalError('destinations', 'empty_destination_list')
-  destinationCache.set(origin, { value: result, expiresAt: Date.now() + DIRECTORY_TTL_MS })
+  destinationCache.set(`${service}:${origin}`, { value: result, expiresAt: Date.now() + DIRECTORY_TTL_MS })
   return result
 }
 
-async function destinationsFor(session: PortalSession, origin: string): Promise<SgrStation[]> {
-  const cached = destinationCache.get(origin)
+async function destinationsFor(session: PortalSession, origin: string, service: ScheduleType): Promise<SgrStation[]> {
+  const cached = destinationCache.get(`${service}:${origin}`)
   if (cached && cached.expiresAt > Date.now()) return cached.value
-  return fetchDestinations(session, origin)
+  return fetchDestinations(session, origin, service)
 }
 
-export async function getLiveDirectory(fetcher: typeof fetch = fetch) {
+export async function getLiveDirectory(fetcher: typeof fetch = fetch, service: ScheduleType = 'inter_county') {
+  // Only share native live results; injected test providers remain isolated.
+  const cached = directories.get(service)
+  if (fetcher === fetch && cached && cached.expiresAt > Date.now()) return cached.value
   const session = new PortalSession(fetcher)
   const html = await pageWithSession(session)
-  const [foundStations] = await Promise.all([stationsFor(session)])
-  return { stations: foundStations, window: parseBookingWindow(html) }
+  const [foundStations] = await Promise.all([stationsFor(session, service)])
+  const value = { stations: foundStations, window: parseBookingWindow(html) }
+  if (fetcher === fetch) directories.set(service, { value, expiresAt: Date.now() + DIRECTORY_TTL_MS })
+  return value
 }
 
-export async function getLiveDestinations(origin: string, fetcher: typeof fetch = fetch) {
+export async function getLiveDestinations(origin: string, fetcher: typeof fetch = fetch, service: ScheduleType = 'inter_county') {
   if (!/^\d+$/.test(origin)) throw new PortalError('destinations', 'invalid_origin')
-  const cachedStations = stationCache && stationCache.expiresAt > Date.now()
-    ? stationCache.value
-    : undefined
+  const stationEntry = stationCache.get(service)
+  const cachedStations = stationEntry && stationEntry.expiresAt > Date.now() ? stationEntry.value : undefined
   if (cachedStations && !cachedStations.some((station) => station.id === origin)) {
     throw new PortalError('destinations', 'invalid_origin')
   }
-  const cachedDestinations = destinationCache.get(origin)
+  const cachedDestinations = destinationCache.get(`${service}:${origin}`)
   if (cachedStations && cachedDestinations && cachedDestinations.expiresAt > Date.now()) {
     return cachedDestinations.value
   }
   const session = new PortalSession(fetcher)
   await pageWithSession(session)
-  const knownStations = await stationsFor(session)
+  const knownStations = await stationsFor(session, service)
   if (!knownStations.some((station) => station.id === origin)) throw new PortalError('destinations', 'invalid_origin')
-  return destinationsFor(session, origin)
+  return destinationsFor(session, origin, service)
 }
 
 function mapTrain(train: ParsedTrain) {
@@ -266,6 +289,8 @@ export async function checkLiveAvailability(
   destination: string,
   date: string,
   fetcher: typeof fetch = fetch,
+  service: ScheduleType = 'inter_county',
+  departure = '',
 ): Promise<AvailabilityResult> {
   if (!/^\d+$/.test(origin) || !/^\d+$/.test(destination) || origin === destination || !isValidDate(date)) {
     throw new PortalError('search', 'invalid_query')
@@ -285,18 +310,18 @@ export async function checkLiveAvailability(
       trains: [],
     }
   }
-  const stations = await stationsFor(session)
+  const stations = await stationsFor(session, service)
   if (!stations.some((station) => station.id === origin)) throw new PortalError('search', 'invalid_origin')
-  const destinations = await destinationsFor(session, origin)
+  const destinations = await destinationsFor(session, origin, service)
   if (!destinations.some((station) => station.id === destination)) throw new PortalError('search', 'invalid_destination')
   const csrfToken = csrfFromPage(pageHtml)
   const form = new URLSearchParams({
     csrf_token: csrfToken,
-    schedule_type: SCHEDULE_TYPE,
+    schedule_type: service,
     terminal_id: origin,
     destination_id: destination,
     'travel-date': `${date.slice(5, 7)}/${date.slice(8, 10)}/${date.slice(0, 4)}`,
-    depature_time: '',
+    depature_time: service === 'express' ? departure || '3.00' : '',
   })
   const response = await session.request('/search-view-results.php', {
     method: 'POST',
@@ -333,6 +358,11 @@ export async function checkLiveAvailability(
     .filter((train) => train.date === date && train.origin === stations.find((item) => item.id === origin)?.name &&
       train.destination === destinations.find((item) => item.id === destination)?.name)
   if (!trains.length) {
+    if (confirmsSoldOut(html, stations.find((item) => item.id === origin)!.name,
+      destinations.find((item) => item.id === destination)!.name, date)) {
+      return { date, status: 'sold-out', lastChecked: new Date().toISOString(), source: 'live', isLive: true,
+        message: 'Kenya Railways reports this service fully booked for the selected route and date.', trains: [] }
+    }
     return {
       date,
       status: 'unavailable',

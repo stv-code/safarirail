@@ -6,7 +6,7 @@ export default defineConfig({
   trailingSlash: 'always',
   integrations: [
     sitemap({
-      filter: (page) => !/\/(booking-request-received|booking-confirmed|404)\/?$/.test(page),
+      filter: (page) => !/\/(booking-request-received|booking-confirmed|404|sgr\/availability)\/?$/.test(page),
     }),
   ],
 })

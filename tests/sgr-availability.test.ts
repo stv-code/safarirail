@@ -8,7 +8,7 @@ import {
   isValidDate,
   stations,
 } from '../src/lib/sgr/provider'
-import { AvailabilityParseError, parseAvailabilityHtml, parseStationOptions } from '../src/lib/sgr/parser'
+import { AvailabilityParseError, parseAvailabilityHtml, parseStationOptions, confirmsSoldOut } from '../src/lib/sgr/parser'
 import { fetchAvailability } from '../src/lib/sgr/client'
 import { createHistoricalFixtureProvider } from '../src/lib/sgr/adapters'
 import {
@@ -69,7 +69,7 @@ function makePortalFetcher(options: {
       })
     }
     if (url.pathname === '/fetch.php' && url.searchParams.get('type') === 'terminals') {
-      return new Response(historicalStations, { headers: { 'Content-Type': 'text/html; charset=UTF-8' } })
+      return new Response(historicalStations, { headers: { 'Content-Type': 'text/html; charset=UTF-8', 'Set-Cookie': 'PORTALSESSION=anonymous-directory; Path=/' } })
     }
     if (url.pathname === '/fetch.php' && url.searchParams.get('type') === 'destinations') {
       const origin = url.searchParams.get('terminal_id')
@@ -94,6 +94,38 @@ function makePortalFetcher(options: {
 }
 
 describe('SGR availability provider boundary', () => {
+  it('only accepts explicit sold-out messages for the requested route and date', () => {
+    const html = '<html><p>Train seats fully booked for  Nairobi Terminus to Mombasa Terminus on 11/22/2026. Please search for another date. </p></html>'
+    expect(confirmsSoldOut(html, 'Nairobi Terminus', 'Mombasa Terminus', '2026-11-22')).toBe(true)
+    expect(confirmsSoldOut(html, 'Nairobi Terminus', 'Mombasa Terminus', '2026-11-23')).toBe(false)
+    expect(confirmsSoldOut(html, 'Mombasa Terminus', 'Nairobi Terminus', '2026-11-22')).toBe(false)
+    expect(confirmsSoldOut('<!--' + html + '-->', 'Nairobi Terminus', 'Mombasa Terminus', '2026-11-22')).toBe(false)
+    expect(confirmsSoldOut('<script>' + html + '</script>', 'Nairobi Terminus', 'Mombasa Terminus', '2026-11-22')).toBe(false)
+  })
+
+  it('accepts verified overnight arrivals', () => {
+    const html = historicalResult.replaceAll('2026-11-28 08:00:00', '2026-11-28 22:00:00').replaceAll('2026-11-28 14:00:00', '2026-11-29 04:00:00')
+    expect(parseAvailabilityHtml(html)[0]).toMatchObject({ departure: '22:00', arrival: '04:00', date: '2026-11-28' })
+  })
+
+  it('calls the fetch provider without a PortalSession receiver', async () => {
+    const portal = makePortalFetcher()
+    const unbound: typeof fetch = function (this: unknown, input, init) {
+      expect(this).toBeUndefined()
+      return portal.fetcher(input, init)
+    }
+    expect((await checkLiveAvailability('2', '3', portal.date, unbound)).status).toBe('available')
+  })
+
+  it('passes express service and departure to the official search', async () => {
+    const portal = makePortalFetcher()
+    await checkLiveAvailability('2', '3', portal.date, portal.fetcher, 'express', '10.00')
+    const body = new URLSearchParams(portal.calls.find(call => call.method === 'POST')?.body)
+    expect(body.get('schedule_type')).toBe('express')
+    expect(body.get('depature_time')).toBe('10.00')
+    expect(portal.calls.some(call => call.path.includes('schedule_type=express'))).toBe(true)
+  })
+
   it('exposes the existing SafariRail terminus routes', () => {
     expect(stations.map(({ name }) => name)).toEqual(['Nairobi Terminus', 'Mombasa Terminus'])
     expect(destinationsFor('nairobi-terminus')).toEqual([stations[1]])
