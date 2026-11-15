@@ -40,7 +40,7 @@ async function main() {
       const days = Array.from({ length: new Date(Date.UTC(y, m, 0)).getUTCDate() }, (_, n) => {
         const date = `${month}-${String(n + 1).padStart(2, '0')}`
         const status = date < today || date > after(60) ? 'outside-window' : n % 7 === 0 && date !== today ? 'sold-out' : n % 11 === 0 ? 'unavailable' : 'available'
-        return { date, status, seats: status === 'available' ? (n % 5 === 0 ? 24 : 218 + n * 3) : 0, lastChecked: status === 'available' || status === 'sold-out' ? new Date().toISOString() : null }
+        return { date, status, seats: status === 'available' ? (n % 5 === 0 ? 24 : 218 + n * 3) : 0, economy: status === 'available' ? 182 : 0, firstClass: status === 'available' ? 36 : 0, trains: status === 'available' ? [train] : [], lastChecked: status === 'available' || status === 'sold-out' ? new Date().toISOString() : null }
       })
       return route.fulfill({ json: { days, loading: false, incomplete: true } })
     })
@@ -56,6 +56,11 @@ async function main() {
     await page.waitForFunction(() => document.getElementById('month-status').textContent.includes('dates checked'))
     assert.equal(await page.locator('[data-service=express]').getAttribute('aria-pressed'), 'true')
     assert.ok(await page.locator('.state-available').count())
+    assert.ok(await page.locator('.day-class.first strong').count())
+    await page.locator('#seat-class').selectOption('economy')
+    assert.equal(await page.locator('.day-class.first').count(), 0)
+    assert.ok(await page.locator('.day-class.economy').count())
+    await page.locator('#seat-class').selectOption('all')
     await fs.mkdir('.artifacts', { recursive: true })
     await page.screenshot({ path: '.artifacts/availability-desktop.png', fullPage: true })
     for (const width of [320, 390, 768, 1440]) {

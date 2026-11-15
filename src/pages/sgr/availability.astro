@@ -9,7 +9,7 @@ import '../../styles/availability.css'
     <section class="seat-masthead">
       <Header />
       <div class="seat-intro">
-        <div><p class="eyebrow">A little planning. A great journey.</p><h1>Find your next departure.</h1><p>A clearer view of SGR seats, one travel date at a time.</p></div>
+        <div><p class="eyebrow">A little planning. A great journey.</p><h1>See your seats. Pick your date.</h1><p>Compare First Class and Economy seats across your travel dates.</p></div>
         <div class="seat-source"><span aria-hidden="true">&#8599;</span><div>Kenya Railways data<small>Checked as you explore</small></div></div>
       </div>
     </section>
@@ -19,7 +19,7 @@ import '../../styles/availability.css'
           <button type="button" data-service="express" aria-pressed="true">Express</button>
           <button type="button" data-service="inter_county" aria-pressed="false">Inter-County</button>
           <button type="button" data-service="phase2" aria-pressed="false">Suswa</button>
-        </div><p id="service-description">Direct connections. Choose your departure.</p></div>
+        </div><label class="class-picker"><span>Seat class</span><select id="seat-class"><option value="all">All classes</option><option value="first">First Class</option><option value="economy">Economy</option></select></label><p id="service-description">Direct connections. Choose your departure.</p></div>
         <div class="route-fields">
           <label><span>From</span><select id="origin" disabled><option value="">Loading stations…</option></select></label>
           <button type="button" id="swap-route" aria-label="Swap origin and destination" disabled>&#8644;</button>
@@ -30,13 +30,13 @@ import '../../styles/availability.css'
       </section>
       <div class="seat-columns">
         <section class="seat-calendar" aria-labelledby="calendar-title">
-          <div class="calendar-heading"><div><p class="eyebrow">Choose a travel date</p><h2 id="calendar-title">Your journey starts here.</h2></div><button type="button" id="retry-month" class="text-action" disabled>&#8635; Update dates</button></div>
+          <div class="calendar-heading"><div><p class="eyebrow">Choose a travel date</p><h2 id="calendar-title">Seats at a glance.</h2></div><button type="button" id="retry-month" class="text-action" disabled>&#8635; Update dates</button></div>
           <div class="month-toolbar"><h3 id="month-label"></h3><div><button id="this-month" type="button">This month</button><button id="previous-month" type="button" aria-label="Previous month">&#8592;</button><button id="next-month" type="button" aria-label="Next month">&#8594;</button></div></div>
           <div class="seat-weekdays" aria-hidden="true"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
           <div class="seat-days" id="calendar-days" role="group" aria-label="Travel dates"></div>
-          <div class="seat-legend" aria-label="Availability legend"><span><i class="available"></i>Available</span><span><i class="low"></i>Few left</span><span><i class="sold-out"></i>Sold out</span><span><i class="unchecked"></i>Not checked</span><span><i class="unavailable"></i>Unknown</span></div>
+          <div class="seat-legend" aria-label="Availability legend"><span><i class="first-class-dot"></i>First Class</span><span><i class="economy-dot"></i>Economy</span><span><i class="low"></i>Few left: under 20 per class</span><span><i class="sold-out"></i>Sold out</span><span><i class="unavailable"></i>Unknown</span></div>
           <div class="scan-status"><span id="scan-indicator" aria-hidden="true"></span><p id="month-status" role="status">Choose a route to explore dates.</p></div>
-          <p class="calendar-footnote">Numbers show Economy + First Class seats for the selected service. “Few left” means 50 or fewer seats. Faded dates are outside the booking window.</p>
+          <p class="calendar-footnote">Each date shows seats for the selected service and departure. Tap a date for train times and fares. Unchecked or unknown counts are shown as a dash, never zero.</p>
         </section>
         <section class="seat-detail" aria-labelledby="results-title" aria-live="polite" aria-atomic="false">
           <div class="detail-heading"><span class="eyebrow">Your selected journey</span><span class="detail-symbol" aria-hidden="true">&#8599;</span></div>

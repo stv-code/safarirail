@@ -6,6 +6,7 @@ import {
   type ParsedTrain,
 } from './parser'
 import { isValidDate, type AvailabilityResult, type SgrStation } from './provider'
+import { publicDirectory } from './directory-cache'
 
 const PORTAL = 'https://metickets.krc.co.ke'
 export const scheduleTypes = ['express', 'inter_county', 'phase2'] as const
@@ -176,6 +177,7 @@ type Cached<T> = { value: T; expiresAt: number }
 const stationCache = new Map<ScheduleType, Cached<SgrStation[]>>()
 const destinationCache = new Map<string, Cached<SgrStation[]>>()
 const directoryLoads = new Map<ScheduleType, Promise<SgrStation[]>>()
+const destinationLoads = new Map<string, Promise<SgrStation[]>>()
 const directories = new Map<ScheduleType, Cached<{ stations: SgrStation[]; window: BookingWindow }>>()
 
 async function responseText(
@@ -237,19 +239,27 @@ async function fetchDestinations(session: PortalSession, origin: string, service
 }
 
 async function destinationsFor(session: PortalSession, origin: string, service: ScheduleType): Promise<SgrStation[]> {
-  const cached = destinationCache.get(`${service}:${origin}`)
+  const key = `${service}:${origin}`
+  const cached = destinationCache.get(key)
   if (cached && cached.expiresAt > Date.now()) return cached.value
-  return fetchDestinations(session, origin, service)
+  const running = destinationLoads.get(key)
+  if (running) return running
+  const load = fetchDestinations(session, origin, service)
+  destinationLoads.set(key, load)
+  try { return await load } finally { destinationLoads.delete(key) }
 }
 
 export async function getLiveDirectory(fetcher: typeof fetch = fetch, service: ScheduleType = 'inter_county') {
   // Only share native live results; injected test providers remain isolated.
   const cached = directories.get(service)
   if (fetcher === fetch && cached && cached.expiresAt > Date.now()) return cached.value
-  const session = new PortalSession(fetcher)
-  const html = await pageWithSession(session)
-  const [foundStations] = await Promise.all([stationsFor(session, service)])
-  const value = { stations: foundStations, window: parseBookingWindow(html) }
+  const load = async () => {
+    const session = new PortalSession(fetcher)
+    const [html, foundStations] = await Promise.all([pageWithSession(session), stationsFor(session, service)])
+    return { stations: foundStations, window: parseBookingWindow(html) }
+  }
+  const value = await (fetcher === fetch ? publicDirectory(`stations/${service}`, load) : load())
+  stationCache.set(service, { value: value.stations, expiresAt: Date.now() + DIRECTORY_TTL_MS })
   if (fetcher === fetch) directories.set(service, { value, expiresAt: Date.now() + DIRECTORY_TTL_MS })
   return value
 }
@@ -265,11 +275,18 @@ export async function getLiveDestinations(origin: string, fetcher: typeof fetch 
   if (cachedStations && cachedDestinations && cachedDestinations.expiresAt > Date.now()) {
     return cachedDestinations.value
   }
-  const session = new PortalSession(fetcher)
-  await pageWithSession(session)
-  const knownStations = await stationsFor(session, service)
-  if (!knownStations.some((station) => station.id === origin)) throw new PortalError('destinations', 'invalid_origin')
-  return destinationsFor(session, origin, service)
+  const load = async () => {
+    const session = new PortalSession(fetcher)
+    // Both directory endpoints are anonymous; no search page or CSRF session is needed.
+    const [knownStations, destinations] = await Promise.all([
+      stationsFor(session, service), destinationsFor(session, origin, service),
+    ])
+    if (!knownStations.some((station) => station.id === origin)) throw new PortalError('destinations', 'invalid_origin')
+    return destinations
+  }
+  const value = await (fetcher === fetch ? publicDirectory(`destinations/${service}/${origin}`, load) : load())
+  destinationCache.set(`${service}:${origin}`, { value, expiresAt: Date.now() + DIRECTORY_TTL_MS })
+  return value
 }
 
 function mapTrain(train: ParsedTrain) {
@@ -297,7 +314,9 @@ export async function checkLiveAvailability(
   }
 
   const session = new PortalSession(fetcher)
-  const pageHtml = await pageWithSession(session)
+  const [pageHtml, stations, destinations] = await Promise.all([
+    pageWithSession(session), stationsFor(session, service), destinationsFor(session, origin, service),
+  ])
   const window = parseBookingWindow(pageHtml)
   if ((window.earliest && date < window.earliest) || (window.latest && date > window.latest)) {
     return {
@@ -310,9 +329,7 @@ export async function checkLiveAvailability(
       trains: [],
     }
   }
-  const stations = await stationsFor(session, service)
   if (!stations.some((station) => station.id === origin)) throw new PortalError('search', 'invalid_origin')
-  const destinations = await destinationsFor(session, origin, service)
   if (!destinations.some((station) => station.id === destination)) throw new PortalError('search', 'invalid_destination')
   const csrfToken = csrfFromPage(pageHtml)
   const form = new URLSearchParams({

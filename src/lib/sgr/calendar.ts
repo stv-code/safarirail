@@ -26,4 +26,16 @@ export function monthDates(month: string): string[] {
 export function seatTotal(result: Pick<AvailabilityResult, 'trains'>): number {
   return result.trains.reduce((sum, train) => sum + train.economyAvailable + train.firstClassAvailable, 0)
 }
-export type CalendarDay = { date: string; status: AvailabilityResult['status'] | 'unchecked'; seats?: number; lastChecked: string | null }
+export type CalendarDay = {
+  date: string; status: AvailabilityResult['status'] | 'unchecked'; seats?: number
+  economy?: number; firstClass?: number; lastChecked: string | null
+  trains?: AvailabilityResult['trains']
+}
+export function calendarDay(result: AvailabilityResult): CalendarDay {
+  const confirmed = result.status === 'available' || result.status === 'sold-out'
+  return { date: result.date, status: result.status, lastChecked: result.lastChecked,
+    ...(confirmed ? { seats: seatTotal(result),
+      economy: result.trains.reduce((sum, train) => sum + train.economyAvailable, 0),
+      firstClass: result.trains.reduce((sum, train) => sum + train.firstClassAvailable, 0), trains: result.trains } : {}),
+  }
+}

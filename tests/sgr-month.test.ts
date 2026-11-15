@@ -57,4 +57,39 @@ describe('monthly availability', () => {
     expect(response.status).toBe(429)
     expect(response.headers.get('Retry-After')).toBe('60')
   })
+  it('streams a snapshot before a slow date finishes and emits fast dates independently', async () => {
+    let release!: () => void
+    const blocked = new Promise<void>(resolve => { release = resolve })
+    vi.mocked(cache.checkedResult).mockImplementation(async (_query, day) => {
+      if (day === date) await blocked
+      return { date: day, status: 'available', lastChecked: new Date().toISOString(), source: 'live', isLive: true,
+        trains: [{ trainNumber: 'N2', departure: '08:00', arrival: '14:00', economyAvailable: 123, firstClassAvailable: 7, economyFare: 1500, firstClassFare: 4500 }] }
+    })
+    const response = await onRequest({ request: makeRequest('&stream=1&selected=' + date) })
+    expect(response.headers.get('content-type')).toContain('application/x-ndjson')
+    const reader = response.body!.getReader()
+    const first = new TextDecoder().decode((await reader.read()).value)
+    expect(JSON.parse(first).type).toBe('snapshot')
+    const second = JSON.parse(new TextDecoder().decode((await reader.read()).value))
+    expect(second.type).toBe('day')
+    expect(second.day.date).not.toBe(date)
+    expect(second.day.economy).toBe(123)
+    expect(second.day.firstClass).toBe(7)
+    release()
+    let content = ''
+    while (true) { const { done, value } = await reader.read(); if (done) break; content += new TextDecoder().decode(value) }
+    expect(content).toContain('"type":"done"')
+    expect(content).toContain('"date":"' + date + '"')
+  })
+
+  it('returns cached class counts and train details without another seat search', async () => {
+    vi.mocked(cache.cachedResult).mockImplementation(async (_query, day) => ({ date: day, status: 'available', lastChecked: new Date().toISOString(), source: 'live', isLive: true,
+      trains: [{ trainNumber: 'N2', departure: '08:00', arrival: '14:00', economyAvailable: 123, firstClassAvailable: 7, economyFare: 1500, firstClassFare: 4500 }] }))
+    const response = await onRequest({ request: makeRequest('&stream=1') })
+    const events = (await response.text()).trim().split('\n').map(line => JSON.parse(line))
+    expect(events[0].days.find((day: { date: string }) => day.date === date)).toMatchObject({ economy: 123, firstClass: 7, seats: 130, trains: [{ trainNumber: 'N2' }] })
+    expect(cache.checkedResult).not.toHaveBeenCalled()
+    expect(events.at(-1).incomplete).toBe(false)
+  })
+
 })

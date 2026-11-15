@@ -8,6 +8,7 @@ const memory = new Map<string, { result: AvailabilityResult; expires: number }>(
 const pending = new Map<string, Promise<AvailabilityResult>>()
 const limits = new Map<string, { count: number; reset: number }>()
 let active = 0
+const waiting: Array<() => void> = []
 const ttl = 120
 function key(query: RouteQuery, date: string) {
   return `${query.service}/${query.origin}/${query.destination}/${query.departure || 'any'}/${date}`
@@ -47,10 +48,13 @@ export async function checkedResult(query: RouteQuery, date: string, refresh = f
   if (pending.has(id)) return pending.get(id)!
   if (!refresh) { const cached = await cachedResult(query, date); if (cached) return cached }
   if (pending.has(id)) return pending.get(id)!
-  if (active >= 4) return { date, status: 'unavailable', lastChecked: null, source: 'none', isLive: false,
+  if (active >= 4 && waiting.length >= 12) return { date, status: 'unavailable', lastChecked: null, source: 'none', isLive: false,
     message: 'The checker is busy. Please try again shortly.', trains: [] }
   const task = (async () => {
-    active++
+    // A service change can overlap a few finishing checks. Queue that work
+    // instead of immediately returning an unknown result for the new service.
+    if (active >= 4) await new Promise<void>(resolve => waiting.push(resolve))
+    else active++
     try {
       const result = await checkLiveAvailability(query.origin, query.destination, date, fetch, query.service, query.departure)
       await save(query, result)
@@ -63,7 +67,12 @@ export async function checkedResult(query: RouteQuery, date: string, refresh = f
         message: 'Kenya Railways could not confirm seats just now. Please retry or check the official portal.', trains: [] }
       await save(query, result)
       return result
-    } finally { active--; pending.delete(id) }
+    } finally {
+      const next = waiting.shift()
+      if (next) next()
+      else active--
+      pending.delete(id)
+    }
   })()
   pending.set(id, task)
   return task

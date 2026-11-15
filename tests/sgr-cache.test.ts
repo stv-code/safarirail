@@ -43,4 +43,17 @@ describe('availability cache', () => {
     await checkedResult(route, result.date)
     expect(checkLiveAvailability).toHaveBeenCalledTimes(2)
   })
+  it('queues overlapping service checks instead of returning unknown when four are active', async () => {
+    let release!: () => void
+    const gate = new Promise<void>(resolve => { release = resolve })
+    vi.mocked(checkLiveAvailability).mockImplementation(async () => { await gate; return result })
+    const { checkedResult } = await import('../src/lib/sgr/cache')
+    const checks = Array.from({ length: 5 }, (_, i) => checkedResult(route, '2026-11-' + (20 + i)))
+    await vi.waitFor(() => expect(checkLiveAvailability).toHaveBeenCalledTimes(4))
+    release()
+    const results = await Promise.all(checks)
+    expect(checkLiveAvailability).toHaveBeenCalledTimes(5)
+    expect(results.every(value => value.status === 'sold-out')).toBe(true)
+  })
+
 })
