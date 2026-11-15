@@ -239,6 +239,7 @@ describe('SGR availability provider boundary', () => {
     const reverse = await getLiveDestinations('3', portal.fetcher)
     expect(reverse).toContainEqual({ id: '2', name: 'Nairobi Terminus' })
     expect(portal.calls.every((call) => call.method === 'GET' || call.method === 'POST')).toBe(true)
+    expect(portal.calls.filter((call) => call.path.startsWith('/fetch.php')).every((call) => call.cookie === null)).toBe(true)
   })
 
   it('uses fresh page tokens and maintains portal cookies for a live read-only search', async () => {

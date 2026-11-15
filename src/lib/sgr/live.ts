@@ -54,7 +54,7 @@ class PortalSession {
 
   async request(
     path: string,
-    options: { method?: 'GET' | 'POST'; headers?: HeadersInit; body?: string; stage: PortalError['stage'] },
+    options: { method?: 'GET' | 'POST'; headers?: HeadersInit; body?: string; stage: PortalError['stage']; sendCookies?: boolean },
   ): Promise<Response> {
     let url = new URL(path, PORTAL)
     if (url.origin !== PORTAL) throw new PortalError(options.stage, 'invalid_upstream')
@@ -62,7 +62,9 @@ class PortalSession {
     let body = options.body
     for (let redirectCount = 0; redirectCount <= 3; redirectCount++) {
       const headers = new Headers(options.headers)
-      if (this.cookies.size) headers.set('Cookie', [...this.cookies].map(([name, value]) => `${name}=${value}`).join('; '))
+      if (options.sendCookies !== false && this.cookies.size) {
+        headers.set('Cookie', [...this.cookies].map(([name, value]) => `${name}=${value}`).join('; '))
+      }
       const controller = new AbortController()
       const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
       let response: Response
@@ -156,8 +158,13 @@ let stationCache: Cached<SgrStation[]> | undefined
 const destinationCache = new Map<string, Cached<SgrStation[]>>()
 let directoryLoad: Promise<SgrStation[]> | undefined
 
-async function responseText(session: PortalSession, path: string, stage: PortalError['stage']): Promise<string> {
-  const response = await session.request(path, { stage })
+async function responseText(
+  session: PortalSession,
+  path: string,
+  stage: PortalError['stage'],
+  sendCookies = true,
+): Promise<string> {
+  const response = await session.request(path, { stage, sendCookies })
   if (response.status !== 200) throw new PortalError(stage, response.status === 429 ? 'rate_limited' : `http_${response.status}`)
   const contentType = response.headers.get('content-type') || ''
   if (!contentType.toLowerCase().includes('text/html')) throw new PortalError(stage, 'unexpected_content_type')
@@ -177,6 +184,7 @@ async function fetchStations(session: PortalSession): Promise<SgrStation[]> {
     session,
     `/fetch.php?type=terminals&schedule_type=${SCHEDULE_TYPE}`,
     'stations',
+    false,
   )
   const found = parseStationOptions(html)
   if (!found.length) throw new PortalError('stations', 'empty_station_list')
@@ -200,6 +208,7 @@ async function fetchDestinations(session: PortalSession, origin: string): Promis
     session,
     `/fetch.php?type=destinations&schedule_type=${SCHEDULE_TYPE}&terminal_id=${encodeURIComponent(origin)}`,
     'destinations',
+    false,
   )
   const found = parseStationOptions(html)
   const result = found.filter((station) => station.id !== origin)
