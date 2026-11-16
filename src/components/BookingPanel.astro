@@ -1,5 +1,6 @@
 ---
 import { bookingExperience, departures, formatKes, siteConfig, ticketClasses } from '@/config/business'
+import BookingAssistanceNotice from './BookingAssistanceNotice.astro'
 ---
 
 <form class="booking-panel booking-panel-full" id="booking-panel">
@@ -7,6 +8,7 @@ import { bookingExperience, departures, formatKes, siteConfig, ticketClasses } f
   <div class="booking-summary">
     <p class="eyebrow">Passenger Details</p>
     <h2>Request SGR booking assistance</h2>
+    <BookingAssistanceNotice compact />
     <p>
       Submit your details first. We confirm seat availability and payment instructions before final confirmation.
     </p>

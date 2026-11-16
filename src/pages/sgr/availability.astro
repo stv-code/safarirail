@@ -2,6 +2,7 @@
 import BaseLayout from '../../layouts/BaseLayout.astro'
 import Header from '../../components/Header.astro'
 import Footer from '../../components/Footer.astro'
+import BookingAssistanceNotice from '../../components/BookingAssistanceNotice.astro'
 import '../../styles/availability.css'
 ---
 <BaseLayout title="SGR Seat Availability | Safari Rail" description="Explore SGR travel dates and check seats for Express, Inter-County and Suswa services." robots="noindex, follow">
@@ -28,6 +29,7 @@ import '../../styles/availability.css'
         </div>
         <div class="directory-line"><p id="directory-status" role="status">Connecting to Kenya Railways…</p><button type="button" id="retry-directory" hidden>Try again &#8635;</button></div>
       </section>
+      <BookingAssistanceNotice />
       <div class="seat-columns">
         <section class="seat-calendar" aria-labelledby="calendar-title">
           <div class="calendar-heading"><div><p class="eyebrow">Choose a travel date</p><h2 id="calendar-title">Seats at a glance.</h2></div><button type="button" id="retry-month" class="text-action" disabled>&#8635; Update dates</button></div>

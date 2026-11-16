@@ -105,7 +105,9 @@ function renderDetail(result?: AvailabilityResponse) {
   $('results-title').textContent = readable(selected)
   $('selected-route').textContent = `${origin.selectedOptions[0]?.text || ''} \u2192 ${destination.selectedOptions[0]?.text || ''} · ${service === 'inter_county' ? 'Inter-County' : service === 'phase2' ? 'Suswa' : `Express · ${departure.selectedOptions[0].text}`}`
   $('train-list').replaceChildren()
-  $('results-message').textContent = result?.message || (result?.status === 'available' ? 'There’s room for your next journey.' : result?.status === 'sold-out' ? 'This departure is fully booked. Try another date or service.' : result?.status === 'outside-window' ? 'This date is outside the current booking window.' : 'Checking seats for this date…')
+  $('results-message').textContent = result?.status === 'sold-out'
+    ? 'This departure is sold out on Kenya Railways. Safari Rail has no additional seats. Please try another date or time.'
+    : result?.message || (result?.status === 'available' ? 'There’s room for your next journey.' : result?.status === 'outside-window' ? 'This date is outside the current booking window.' : 'Checking seats for this date…')
   $('last-checked').textContent = result?.lastChecked ? `Checked ${new Intl.DateTimeFormat('en-KE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Nairobi' }).format(new Date(result.lastChecked))} EAT${result.cached ? ' · cached result' : ''}` : 'No confirmed seat count for this date yet.'
   for (const train of result?.trains || []) {
     const article = document.createElement('article'); article.className = 'train-result'

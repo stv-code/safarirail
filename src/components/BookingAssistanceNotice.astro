@@ -1,0 +1,23 @@
+---
+const { compact = false } = Astro.props
+---
+<aside class:list={['booking-assistance-notice', { compact }]} aria-label="About our booking assistance">
+  {compact ? (
+    <p><strong>Booking assistance, not ticket sales.</strong> We mainly help travellers who don't have access to M-Pesa. We don't sell tickets or hold separate seats. If a departure is sold out on Kenya Railways, we can't book it either.</p>
+  ) : (
+    <>
+      <h2>No seats on Kenya Railways? We can't book them either.</h2>
+      <p>Safari Rail does not sell tickets or hold extra seats. We help travellers book through the official Kenya Railways portal, especially tourists who don't have access to M-Pesa.</p>
+      <p>If your preferred train is sold out on <a href="https://metickets.krc.co.ke/" target="_blank" rel="noopener noreferrer">metickets.krc.co.ke</a>, we can't secure a ticket for that departure. Please try another date or departure time.</p>
+    </>
+  )}
+</aside>
+<style>
+  .booking-assistance-notice { margin:20px 0 0; padding:20px 24px; border:1px solid #e5d6b4; border-left:4px solid #986529; border-radius:10px; background:#fff9ed; color:#394b3e; }
+  .booking-assistance-notice h2 { margin:0 0 10px; font-family:inherit; font-size:1.05rem; font-weight:750; letter-spacing:normal; line-height:1.45; }
+  .booking-assistance-notice p { margin:8px 0 0; font-size:.84rem; line-height:1.7; }
+  .booking-assistance-notice a { text-decoration:underline; text-underline-offset:3px; overflow-wrap:anywhere; }
+  .booking-assistance-notice.compact { margin:16px 0; padding:14px 16px; }
+  .booking-assistance-notice.compact p { margin:0; font-size:.8rem; }
+  @media(max-width:560px) { .booking-assistance-notice { padding:16px; }.booking-assistance-notice h2 { font-size:.96rem; } }
+</style>
