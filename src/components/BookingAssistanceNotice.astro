@@ -3,12 +3,12 @@ const { compact = false } = Astro.props
 ---
 <aside class:list={['booking-assistance-notice', { compact }]} aria-label="About our booking assistance">
   {compact ? (
-    <p><strong>Booking assistance, not ticket sales.</strong> We mainly help travellers who don't have access to M-Pesa. We don't sell tickets or hold separate seats. If a departure is sold out on Kenya Railways, we can't book it either.</p>
+    <p><strong>Fellow Kenyans, tafadhali! WE DO NOT SELL TICKETS.</strong> We help you book through Kenya Railways. If <a href="https://metickets.krc.co.ke/" target="_blank" rel="noopener noreferrer">metickets.krc.co.ke</a> shows your train is fully booked, we can’t book it either. Please choose an available departure before sending us a request.</p>
   ) : (
     <>
-      <h2>No seats on Kenya Railways? We can't book them either.</h2>
-      <p>Safari Rail does not sell tickets or hold extra seats. We help travellers book through the official Kenya Railways portal, especially tourists who don't have access to M-Pesa.</p>
-      <p>If your preferred train is sold out on <a href="https://metickets.krc.co.ke/" target="_blank" rel="noopener noreferrer">metickets.krc.co.ke</a>, we can't secure a ticket for that departure. Please try another date or departure time.</p>
+      <h2>Fellow Kenyans, tafadhali! WE DO NOT SELL TICKETS.</h2>
+      <p>Many of you come to us after Kenya Railways shows your train is full. We know how much that journey can mean, especially when someone is counting on you to get home. We wish we could find you one more seat. We see the same seats you do.</p>
+      <p>We help travellers book through <a href="https://metickets.krc.co.ke/" target="_blank" rel="noopener noreferrer">metickets.krc.co.ke</a>, especially if they don’t have access to M-Pesa. <strong>If your train is fully booked there, we can’t book it either.</strong> Please check another date or departure time. If you find an available seat and need help booking it, that’s what we’re here for.</p>
     </>
   )}
 </aside>
