@@ -2,22 +2,15 @@
 const { compact = false } = Astro.props
 ---
 <aside class:list={['booking-assistance-notice', { compact }]} aria-label="About our booking assistance">
-  {compact ? (
-    <p><strong>Fellow Kenyans, tafadhali! WE DO NOT SELL TICKETS.</strong> We help you book through Kenya Railways. If <a href="https://metickets.krc.co.ke/" target="_blank" rel="noopener noreferrer">metickets.krc.co.ke</a> shows your train is fully booked, we can’t book it either. Please choose an available departure before sending us a request.</p>
-  ) : (
-    <>
-      <h2>Fellow Kenyans, tafadhali! WE DO NOT SELL TICKETS.</h2>
-      <p>Many of you come to us after Kenya Railways shows your train is full. We know how much that journey can mean, especially when someone is counting on you to get home. We wish we could find you one more seat. We see the same seats you do.</p>
-      <p>We help travellers book through <a href="https://metickets.krc.co.ke/" target="_blank" rel="noopener noreferrer">metickets.krc.co.ke</a>, especially if they don’t have access to M-Pesa. <strong>If your train is fully booked there, we can’t book it either.</strong> Please check another date or departure time. If you find an available seat and need help booking it, that’s what we’re here for.</p>
-    </>
-  )}
+  <p><strong>Visiting Kenya?</strong> Karibu! If you need help booking an SGR seat, especially if you don’t have M-Pesa, we’re happy to help you book an available seat through Kenya Railways.</p>
+  <p><strong>To our fellow Kenyans who’ve already checked and found their train full:</strong> Tafadhali, we know how much that journey can mean. We do not sell tickets or hold extra seats. If your train is fully booked on <a href="https://metickets.krc.co.ke/" target="_blank" rel="noopener noreferrer">metickets.krc.co.ke</a>, we can’t book it either. Please try another time or date.</p>
 </aside>
 <style>
   .booking-assistance-notice { margin:20px 0 0; padding:20px 24px; border:1px solid #e5d6b4; border-left:4px solid #986529; border-radius:10px; background:#fff9ed; color:#394b3e; }
-  .booking-assistance-notice h2 { margin:0 0 10px; font-family:inherit; font-size:1.05rem; font-weight:750; letter-spacing:normal; line-height:1.45; }
   .booking-assistance-notice p { margin:8px 0 0; font-size:.84rem; line-height:1.7; }
   .booking-assistance-notice a { text-decoration:underline; text-underline-offset:3px; overflow-wrap:anywhere; }
   .booking-assistance-notice.compact { margin:16px 0; padding:14px 16px; }
   .booking-assistance-notice.compact p { margin:0; font-size:.8rem; }
-  @media(max-width:560px) { .booking-assistance-notice { padding:16px; }.booking-assistance-notice h2 { font-size:.96rem; } }
+  .booking-assistance-notice.compact p + p { margin-top:8px; }
+  @media(max-width:560px) { .booking-assistance-notice { padding:16px; } }
 </style>
